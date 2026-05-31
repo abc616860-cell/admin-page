@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Fixora Pro - Full Professional Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com data: blob:; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://kbnqrpkexkjzndunnxcq.supabase.co; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com data: blob:; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js">
 
@@ -191,7 +191,7 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
               <div class="field"><label>الاسم الكامل</label><input id="uFullName" placeholder="اسم الموظف"></div>
               <div class="field"><label>البريد الإلكتروني</label><input id="uEmail" type="email" placeholder="user@example.com"></div>
               <div class="field"><label>كلمة المرور</label><input id="uPassword" type="password" placeholder="كلمة مرور قوية"></div>
-              <div class="field"><label>الدور</label><select id="uRole"><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="client">Client</option></select></div>
+              <div class="field"><label>الدور</label><select id="uRole"><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="viewer">Viewer</option></select></div>
               <div class="field"><label>الحالة</label><select id="uActive"><option value="true">Active</option><option value="false">Disabled</option></select></div>
               <div class="field" style="grid-column:1/-1"><label>الصلاحيات الإضافية</label><div id="uPermissions" class="choice-bar"></div></div>
             </div>
@@ -248,7 +248,6 @@ const SUPABASE_URL='https://kbnqrpkexkjzndunnxcq.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibnFycGtleGtqem5kdW5ueGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTk5MTIsImV4cCI6MjA5NTI3NTkxMn0.zs1q4hmUDH80j6guhciKJbfi75aB3MAlD6sAvkGcZWU';
 const SB_READY=SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length>40 && window.supabase;
 const sb=SB_READY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-window.sb = sb;
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v)); if(k===ORD) syncOrdersToSupabase(v); if(k===TECH) syncTechsToSupabase(v)}
 function normalizeOrderForDb(x){return {id:String(x.id||('#'+Date.now())),name:x.name||'',phone:x.phone||'',service:x.service||'',city:x.city||'',address:x.address||'',notes:x.notes||'',price:Number(x.price||0),status:x.status||'جديدة',date:x.date||new Date().toISOString().slice(0,10),time:x.time||'',tech_id:x.techId||null,payment_status:x.paymentStatus||null,rating:x.rating||null,rating_note:x.ratingNote||null,before_photos:x.beforePhotos||[],after_photos:x.afterPhotos||[],raw:x,updated_at:new Date().toISOString()}}
@@ -1041,7 +1040,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
   window.securityFillDemo=function(){document.getElementById('secUser').value='admin';document.getElementById('secPass').value='admin123';};
   window.securityLoginSubmit=function(){const u=(document.getElementById('secUser').value||'').trim(); const p=(document.getElementById('secPass').value||'').trim(); const user=SECURITY_USERS.find(x=>x.username===u&&x.password===p); const err=document.getElementById('secError'); if(!user){err.classList.add('show'); securityAudit('فشل دخول','محاولة باسم: '+u); return;} saveSession(user,document.getElementById('secRemember').checked); err.classList.remove('show'); unlockUI(); securityAudit('تسجيل دخول','دخول ناجح إلى لوحة الأدمن'); if(typeof renderAll==='function')renderAll();};
   window.securityLogout=function(){securityAudit('تسجيل خروج','إنهاء الجلسة الحالية'); localStorage.removeItem(SESSION_KEY); document.body.classList.add('secure-locked');};
-  window.requireAdmin=function(action){const s=getSession(); if(!s){document.body.classList.add('secure-locked'); return false;} if(s.role!=='admin'){alert('هذه العملية تحتاج صلاحية Admin'); securityAudit('رفض صلاحية',action||'عملية محمية'); return false;} return true;};
+  window.requireAdmin=function(action){const s=getSession(); if(!s){document.body.classList.add('secure-locked'); return false;} if(s.role !== 'admin' && role !== 'super_admin'){alert('هذه العملية تحتاج صلاحية Admin'); securityAudit('رفض صلاحية',action||'عملية محمية'); return false;} return true;};
   window.secureClearDemo=function(){if(!requireAdmin('مسح بيانات التجربة'))return; const pass=prompt('اكتب كلمة مرور الأدمن لتأكيد المسح'); if(pass!=='admin123'){alert('تم إلغاء العملية'); securityAudit('رفض مسح البيانات','كلمة مرور تأكيد غير صحيحة'); return;} localStorage.removeItem(ORD); localStorage.removeItem(TECH); securityAudit('مسح بيانات التجربة','تم مسح الطلبات والفنيين من LocalStorage'); if(typeof renderAll==='function')renderAll();};
   const oldShow=window.showPage; if(typeof oldShow==='function'){window.showPage=function(id,el){if(!getSession()){document.body.classList.add('secure-locked');return} if(!can(id)){alert('غير مسموح لك بفتح هذه الصفحة'); securityAudit('رفض فتح صفحة',id); return;} oldShow.apply(this,arguments); if(id==='auditLog')renderAuditLog();};}
   const oldAddOrder=window.addOrder; if(typeof oldAddOrder==='function'){window.addOrder=function(){if(!requireAdmin('إضافة طلب'))return; const name=(document.getElementById('oName')?.value||'').trim(); const phone=(document.getElementById('oPhone')?.value||'').trim(); if(phone && !/^05\d{8}$/.test(phone)){alert('رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام');return;} oldAddOrder.apply(this,arguments); securityAudit('إضافة طلب','عميل: '+(name||'عميل جديد'));};}
@@ -1219,7 +1218,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
   function loadUsers(){let users=[];try{users=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')}catch(e){} if(!users.length){users=DEFAULT_USERS; localStorage.setItem(USERS_KEY,JSON.stringify(users));} return users;}
   function saveUsers(users){localStorage.setItem(USERS_KEY,JSON.stringify(users));}
   function currentSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
-  function isAdmin(){const s=currentSession(); return s && s.(role==='admin'||role==='super_admin');}
+  function isAdmin(){const s=currentSession(); return s && s.(role === 'admin' || role === 'super_admin');}
   function audit(action,details){if(typeof window.securityAudit==='function')window.securityAudit(clean(action),clean(details||''));}
   function canManageUsers(){if(!isAdmin()){alert('إدارة المستخدمين تحتاج صلاحية Admin'); audit('رفض صلاحية','محاولة فتح/تعديل المستخدمين'); return false;} return true;}
   window.renderUserPermissions = function(){
@@ -1328,7 +1327,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
   const oldShow=window.showPage;
   window.showPage=function(id,el){
     const s=currentSession(); if(!s){document.body.classList.add('secure-locked');return;}
-    if(id==='users' && s.role!=='admin'){alert('غير مسموح لك بفتح إدارة المستخدمين'); audit('رفض فتح صفحة','users'); return;}
+    if(id==='users' && s.role !== 'admin' && role !== 'super_admin'){alert('غير مسموح لك بفتح إدارة المستخدمين'); audit('رفض فتح صفحة','users'); return;}
     const allowed={admin:['*'],dispatcher:['dashboard','orders','assign','clients','clientTracking','notifications','reports'],technician:['techPortal','clientTracking'],viewer:['dashboard','reports','clientTracking']};
     const pages=allowed[s.role]||[]; if(!pages.includes('*')&&!pages.includes(id)){alert('غير مسموح لك بفتح هذه الصفحة'); audit('رفض فتح صفحة',id); return;}
     oldShow.call(this,id,el); if(id==='users')renderUsersAdmin();
@@ -1528,153 +1527,45 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 
 
 <script>
-/* FIX: super_admin is treated as full admin permission */
+window.forceFixoraAdmin = true;
+
 (function(){
-  window.isAdminRole = function(role){
+  const originalAlert = window.alert;
+
+  window.checkAdminAccess = function(){
+    const role =
+      sessionStorage.getItem('sb_user_role') ||
+      sessionStorage.getItem('role') ||
+      '';
+
     return role === 'admin' || role === 'super_admin';
   };
 
   const oldCan = window.can;
-  window.can = function(permission){
-    const role =
-      sessionStorage.getItem('sb_user_role') ||
-      sessionStorage.getItem('role') ||
-      localStorage.getItem('role') ||
-      '';
 
-    if(role === 'super_admin' || role === 'admin') return true;
+  window.can = function(permission){
+    if(window.checkAdminAccess()) return true;
 
     if(typeof oldCan === 'function'){
-      try { return oldCan(permission); } catch(e) {}
+      try{
+        return oldCan(permission);
+      }catch(e){}
     }
 
-    const permissions = {
-      dispatcher: ['orders','assign','view_orders','assign_orders','update_order_status'],
-      technician: ['techPortal','view_my_orders','update_my_orders'],
-      viewer: ['dashboard','reports']
-    };
-
-    return (permissions[role] || []).includes(permission);
-  };
-
-  window.requireAdminPermission = function(){
-    const role =
-      sessionStorage.getItem('sb_user_role') ||
-      sessionStorage.getItem('role') ||
-      localStorage.getItem('role') ||
-      '';
-
-    if(role === 'admin' || role === 'super_admin') return true;
-
-    alert('إدارة المستخدمين تحتاج صلاحية Admin');
     return false;
   };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const role =
+      sessionStorage.getItem('sb_user_role') ||
+      sessionStorage.getItem('role');
+
+    if(role === 'super_admin'){
+      sessionStorage.setItem('role','super_admin');
+      sessionStorage.setItem('sb_user_role','super_admin');
+    }
+  });
 })();
-
-async function saveAdminUser(){
-  const role =
-    sessionStorage.getItem('sb_user_role') ||
-    sessionStorage.getItem('role') ||
-    localStorage.getItem('role') ||
-    '';
-
-  if(role !== 'admin' && role !== 'super_admin'){
-    alert('إدارة المستخدمين تحتاج صلاحية Admin');
-    return;
-  }
-
-  const username = sanitizeTextValue(document.getElementById('uUsername')?.value || '');
-  const fullName = sanitizeTextValue(document.getElementById('uFullName')?.value || '');
-  const email = sanitizeTextValue(document.getElementById('uEmail')?.value || '');
-  const password = document.getElementById('uPassword')?.value || '';
-  const userRole = document.getElementById('uRole')?.value || 'client';
-  const isActive = (document.getElementById('uActive')?.value || 'true') === 'true';
-
-  if(!email || !password || !fullName){
-    alert('أدخل الاسم والبريد وكلمة المرور');
-    return;
-  }
-
-  if(password.length < 6){
-    alert('كلمة المرور يجب ألا تقل عن 6 أحرف');
-    return;
-  }
-
-  if(!window.sb && typeof sb !== 'undefined') window.sb = sb;
-
-  if(!window.sb){
-    alert('Supabase غير متصل');
-    return;
-  }
-
-  try{
-    const { data: signUpData, error: signUpError } = await window.sb.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          full_name: fullName,
-          username: username,
-          role: userRole
-        }
-      }
-    });
-
-    if(signUpError){
-      alert('خطأ إنشاء المستخدم: ' + signUpError.message);
-      return;
-    }
-
-    const newUserId = signUpData && signUpData.user ? signUpData.user.id : null;
-
-    if(!newUserId){
-      alert('تم إرسال تأكيد للبريد، لكن لم يتم إرجاع UID. راجع إعدادات Confirm Email في Supabase.');
-      return;
-    }
-
-    const { error: profileError } = await window.sb
-      .from('user_profiles')
-      .upsert({
-        id: newUserId,
-        full_name: fullName,
-        email: email,
-        role: userRole,
-        is_active: isActive,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-
-    if(profileError){
-      alert('تم إنشاء المستخدم في Authentication لكن فشل إضافته للصلاحيات: ' + profileError.message);
-      return;
-    }
-
-    if(typeof addAuditLog === 'function'){
-      addAuditLog('create_user', {
-        email: email,
-        role: userRole,
-        is_active: isActive
-      });
-    }
-
-    alert('تم إنشاء المستخدم وإضافته للصلاحيات بنجاح');
-
-    if(typeof clearUserForm === 'function') clearUserForm();
-    if(typeof renderUsersAdmin === 'function') renderUsersAdmin();
-
-  }catch(err){
-    alert('حدث خطأ: ' + err.message);
-  }
-}
-
-function sanitizeTextValue(value){
-  if(window.DOMPurify){
-    return DOMPurify.sanitize(String(value || ''), {
-      ALLOWED_TAGS: [],
-      ALLOWED_ATTR: []
-    }).trim();
-  }
-  return String(value || '').replace(/[<>"'`]/g,'').trim();
-}
 </script>
 
 </body>
