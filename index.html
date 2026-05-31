@@ -248,6 +248,7 @@ const SUPABASE_URL='https://kbnqrpkexkjzndunnxcq.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibnFycGtleGtqem5kdW5ueGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTk5MTIsImV4cCI6MjA5NTI3NTkxMn0.zs1q4hmUDH80j6guhciKJbfi75aB3MAlD6sAvkGcZWU';
 const SB_READY=SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length>40 && window.supabase;
 const sb=SB_READY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+window.sb = sb;
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v)); if(k===ORD) syncOrdersToSupabase(v); if(k===TECH) syncTechsToSupabase(v)}
 function normalizeOrderForDb(x){return {id:String(x.id||('#'+Date.now())),name:x.name||'',phone:x.phone||'',service:x.service||'',city:x.city||'',address:x.address||'',notes:x.notes||'',price:Number(x.price||0),status:x.status||'جديدة',date:x.date||new Date().toISOString().slice(0,10),time:x.time||'',tech_id:x.techId||null,payment_status:x.paymentStatus||null,rating:x.rating||null,rating_note:x.ratingNote||null,before_photos:x.beforePhotos||[],after_photos:x.afterPhotos||[],raw:x,updated_at:new Date().toISOString()}}
