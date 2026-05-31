@@ -1219,7 +1219,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
   function loadUsers(){let users=[];try{users=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')}catch(e){} if(!users.length){users=DEFAULT_USERS; localStorage.setItem(USERS_KEY,JSON.stringify(users));} return users;}
   function saveUsers(users){localStorage.setItem(USERS_KEY,JSON.stringify(users));}
   function currentSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
-  function isAdmin(){const s=currentSession(); return s && s.role==='admin';}
+  function isAdmin(){const s=currentSession(); return s && s.(role==='admin'||role==='super_admin');}
   function audit(action,details){if(typeof window.securityAudit==='function')window.securityAudit(clean(action),clean(details||''));}
   function canManageUsers(){if(!isAdmin()){alert('إدارة المستخدمين تحتاج صلاحية Admin'); audit('رفض صلاحية','محاولة فتح/تعديل المستخدمين'); return false;} return true;}
   window.renderUserPermissions = function(){
@@ -1523,6 +1523,52 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
       if(e.key==='Enter' && document.body.classList.contains('secure-locked')) window.securityLoginSubmit();
     });
   });
+})();
+</script>
+
+
+<script>
+/* FIX: super_admin is treated as full admin permission */
+(function(){
+  window.isAdminRole = function(role){
+    return role === 'admin' || role === 'super_admin';
+  };
+
+  const oldCan = window.can;
+  window.can = function(permission){
+    const role =
+      sessionStorage.getItem('sb_user_role') ||
+      sessionStorage.getItem('role') ||
+      localStorage.getItem('role') ||
+      '';
+
+    if(role === 'super_admin' || role === 'admin') return true;
+
+    if(typeof oldCan === 'function'){
+      try { return oldCan(permission); } catch(e) {}
+    }
+
+    const permissions = {
+      dispatcher: ['orders','assign','view_orders','assign_orders','update_order_status'],
+      technician: ['techPortal','view_my_orders','update_my_orders'],
+      viewer: ['dashboard','reports']
+    };
+
+    return (permissions[role] || []).includes(permission);
+  };
+
+  window.requireAdminPermission = function(){
+    const role =
+      sessionStorage.getItem('sb_user_role') ||
+      sessionStorage.getItem('role') ||
+      localStorage.getItem('role') ||
+      '';
+
+    if(role === 'admin' || role === 'super_admin') return true;
+
+    alert('إدارة المستخدمين تحتاج صلاحية Admin');
+    return false;
+  };
 })();
 </script>
 
