@@ -191,7 +191,7 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
               <div class="field"><label>الاسم الكامل</label><input id="uFullName" placeholder="اسم الموظف"></div>
               <div class="field"><label>البريد الإلكتروني</label><input id="uEmail" type="email" placeholder="user@example.com"></div>
               <div class="field"><label>كلمة المرور</label><input id="uPassword" type="password" placeholder="كلمة مرور قوية"></div>
-              <div class="field"><label>الدور</label><select id="uRole"><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="viewer">Viewer</option></select></div>
+              <div class="field"><label>الدور</label><select id="uRole"><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="client">Client</option></select></div>
               <div class="field"><label>الحالة</label><select id="uActive"><option value="true">Active</option><option value="false">Disabled</option></select></div>
               <div class="field" style="grid-column:1/-1"><label>الصلاحيات الإضافية</label><div id="uPermissions" class="choice-bar"></div></div>
             </div>
@@ -1570,6 +1570,111 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
     return false;
   };
 })();
+
+async function saveAdminUser(){
+  const role =
+    sessionStorage.getItem('sb_user_role') ||
+    sessionStorage.getItem('role') ||
+    localStorage.getItem('role') ||
+    '';
+
+  if(role !== 'admin' && role !== 'super_admin'){
+    alert('إدارة المستخدمين تحتاج صلاحية Admin');
+    return;
+  }
+
+  const username = sanitizeTextValue(document.getElementById('uUsername')?.value || '');
+  const fullName = sanitizeTextValue(document.getElementById('uFullName')?.value || '');
+  const email = sanitizeTextValue(document.getElementById('uEmail')?.value || '');
+  const password = document.getElementById('uPassword')?.value || '';
+  const userRole = document.getElementById('uRole')?.value || 'client';
+  const isActive = (document.getElementById('uActive')?.value || 'true') === 'true';
+
+  if(!email || !password || !fullName){
+    alert('أدخل الاسم والبريد وكلمة المرور');
+    return;
+  }
+
+  if(password.length < 6){
+    alert('كلمة المرور يجب ألا تقل عن 6 أحرف');
+    return;
+  }
+
+  if(!window.sb && typeof sb !== 'undefined') window.sb = sb;
+
+  if(!window.sb){
+    alert('Supabase غير متصل');
+    return;
+  }
+
+  try{
+    const { data: signUpData, error: signUpError } = await window.sb.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          full_name: fullName,
+          username: username,
+          role: userRole
+        }
+      }
+    });
+
+    if(signUpError){
+      alert('خطأ إنشاء المستخدم: ' + signUpError.message);
+      return;
+    }
+
+    const newUserId = signUpData && signUpData.user ? signUpData.user.id : null;
+
+    if(!newUserId){
+      alert('تم إرسال تأكيد للبريد، لكن لم يتم إرجاع UID. راجع إعدادات Confirm Email في Supabase.');
+      return;
+    }
+
+    const { error: profileError } = await window.sb
+      .from('user_profiles')
+      .upsert({
+        id: newUserId,
+        full_name: fullName,
+        email: email,
+        role: userRole,
+        is_active: isActive,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if(profileError){
+      alert('تم إنشاء المستخدم في Authentication لكن فشل إضافته للصلاحيات: ' + profileError.message);
+      return;
+    }
+
+    if(typeof addAuditLog === 'function'){
+      addAuditLog('create_user', {
+        email: email,
+        role: userRole,
+        is_active: isActive
+      });
+    }
+
+    alert('تم إنشاء المستخدم وإضافته للصلاحيات بنجاح');
+
+    if(typeof clearUserForm === 'function') clearUserForm();
+    if(typeof renderUsersAdmin === 'function') renderUsersAdmin();
+
+  }catch(err){
+    alert('حدث خطأ: ' + err.message);
+  }
+}
+
+function sanitizeTextValue(value){
+  if(window.DOMPurify){
+    return DOMPurify.sanitize(String(value || ''), {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: []
+    }).trim();
+  }
+  return String(value || '').replace(/[<>"'`]/g,'').trim();
+}
 </script>
 
 </body>
