@@ -100,12 +100,12 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
 <div id="securityLogin" class="security-login">
   <div class="security-card">
     <div class="security-brand"><div class="security-logo">🛡️</div><div><h2>تسجيل دخول الأدمن</h2><p>حماية لوحة التحكم والصلاحيات قبل عرض البيانات.</p></div></div>
-    <div class="secure-lock-note">بيانات الدخول التجريبية: <b>admin</b> / <b>admin123</b>. غيّرها قبل التشغيل الحقيقي.</div>
-    <div class="security-field"><label>اسم المستخدم</label><input id="secUser" autocomplete="username" placeholder="admin"></div>
+    <div class="secure-lock-note">تسجيل الدخول الحقيقي عبر Supabase Auth. استخدم الإيميل وكلمة المرور المسجلة في Authentication.</div>
+    <div class="security-field"><label>الإيميل</label><input id="secUser" type="email" autocomplete="username" placeholder="example@gmail.com"></div>
     <div class="security-field"><label>كلمة المرور</label><input id="secPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
     <div class="security-row"><label><input id="secRemember" type="checkbox" checked> حفظ الجلسة</label><span class="secure-badge">Admin Only</span></div>
     <div id="secError" class="security-error">بيانات الدخول غير صحيحة</div>
-    <div class="security-actions"><button class="btn" onclick="securityLoginSubmit()">دخول آمن</button><button class="btn light" onclick="securityFillDemo()">تجربة سريعة</button></div>
+    <div class="security-actions"><button class="btn" onclick="securityLoginSubmit()">دخول Supabase</button><button class="btn light" onclick="securityLogout()">خروج</button></div>
   </div>
 </div>
 
@@ -244,8 +244,8 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
 </div>
 <script>
 const ORD='fixora_exact_orders_v1', TECH='fixora_exact_techs_v1';
-const SUPABASE_URL='ضع_رابط_SUPABASE_PROJECT_URL_هنا';
-const SUPABASE_ANON_KEY='ضع_SUPABASE_ANON_KEY_هنا';
+const SUPABASE_URL='https://kbnqrpkexkjzndunnxcq.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibnFycGtleGtqem5kdW5ueGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTk5MTIsImV4cCI6MjA5NTI3NTkxMn0.zs1q4hmUDH80j6guhciKJbfi75aB3MAlD6sAvkGcZWU';
 const SB_READY=SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length>40 && window.supabase;
 const sb=SB_READY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
@@ -1333,6 +1333,195 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
     oldShow.call(this,id,el); if(id==='users')renderUsersAdmin();
   };
   window.addEventListener('load',function(){loadUsers(); renderUserPermissions(); renderUsersAdmin();});
+})();
+</script>
+
+
+
+<!-- V15: Real Supabase Auth Login + Role Guard (Design unchanged) -->
+<script>
+(function(){
+  'use strict';
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  const ADMIN_ROLES=['super_admin','admin','dispatcher'];
+  const FULL_ADMIN_ROLES=['super_admin','admin'];
+  const ROLE_PAGES={
+    super_admin:['*'],
+    admin:['*'],
+    dispatcher:['dashboard','orders','assign','clients','clientTracking','notifications','reports'],
+    technician:['techPortal','clientTracking'],
+    client:['clientTracking'],
+    viewer:['dashboard','reports','clientTracking']
+  };
+
+  function clean(v){
+    if(window.fixoraSanitizeInput) return window.fixoraSanitizeInput(v);
+    return String(v||'').replace(/<[^>]*>/g,'').trim();
+  }
+  function getLocalSession(){
+    try{
+      const s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+      if(!s || !s.expiresAt || Date.now()>s.expiresAt){localStorage.removeItem(SESSION_KEY);return null;}
+      return s;
+    }catch(e){return null;}
+  }
+  function saveLocalSession(user,profile){
+    const remember=document.getElementById('secRemember')?.checked;
+    const hours=remember?12:2;
+    const s={
+      token:user?.id || (crypto.randomUUID?crypto.randomUUID():String(Date.now())),
+      username:user?.email || profile?.email || 'user',
+      user_id:user?.id || profile?.id || '',
+      email:user?.email || profile?.email || '',
+      name:profile?.full_name || user?.email || 'مستخدم',
+      role:profile?.role || 'client',
+      is_active:profile?.is_active !== false,
+      loginAt:new Date().toISOString(),
+      expiresAt:Date.now()+hours*60*60*1000,
+      source:'supabase_auth'
+    };
+    localStorage.setItem(SESSION_KEY,JSON.stringify(s));
+    return s;
+  }
+  function audit(action,details){
+    if(typeof window.securityAudit==='function') window.securityAudit(clean(action),clean(details||''));
+  }
+  async function addAuditRemote(action,details){
+    try{
+      if(!window.sb) return;
+      const s=getLocalSession();
+      if(!s) return;
+      await window.sb.from('audit_logs').insert({
+        user_id:s.user_id || null,
+        user_role:s.role || null,
+        action:clean(action),
+        table_name:null,
+        record_id:null,
+        new_data:{details:clean(details||''), source:'admin_html'},
+        user_agent:navigator.userAgent
+      });
+    }catch(e){console.warn('Remote audit skipped:',e.message||e);}
+  }
+  function setLoginError(msg){
+    const err=document.getElementById('secError');
+    if(err){err.textContent=msg||'بيانات الدخول غير صحيحة';err.classList.add('show');}
+  }
+  function hideLoginError(){document.getElementById('secError')?.classList.remove('show');}
+  function unlockUI(){
+    const s=getLocalSession();
+    if(!s || !ADMIN_ROLES.includes(s.role) || s.is_active===false){document.body.classList.add('secure-locked');return;}
+    document.body.classList.remove('secure-locked');
+    document.querySelectorAll('.user b').forEach(x=>x.textContent=s.name||s.email||'مدير النظام');
+    document.querySelectorAll('.user small').forEach(x=>x.textContent='صلاحية: '+(s.role||'-'));
+    const top=document.querySelector('.top-icons');
+    if(top&&!document.getElementById('secLogoutBtn')){
+      const b=document.createElement('button');
+      b.id='secLogoutBtn';b.className='btn light';b.textContent='خروج آمن';b.onclick=window.securityLogout;top.appendChild(b);
+    }
+    if(typeof renderAll==='function')renderAll();
+    if(typeof renderAuditLog==='function')renderAuditLog();
+  }
+  async function loadProfile(user){
+    if(!window.sb) throw new Error('Supabase غير مفعل: ضع SUPABASE_URL و SUPABASE_ANON_KEY داخل الملف');
+    const {data:profile,error}=await window.sb
+      .from('user_profiles')
+      .select('id,full_name,email,role,is_active')
+      .eq('id',user.id)
+      .maybeSingle();
+    if(error) throw error;
+    if(!profile) throw new Error('المستخدم موجود في Authentication لكنه غير مضاف في جدول user_profiles');
+    if(profile.is_active===false) throw new Error('هذا المستخدم غير مفعل');
+    if(!ADMIN_ROLES.includes(profile.role)) throw new Error('ليس لديك صلاحية دخول لوحة الأدمن. الدور الحالي: '+profile.role);
+    return profile;
+  }
+
+  window.securityLoginSubmit=async function(){
+    const email=clean(document.getElementById('secUser')?.value).toLowerCase();
+    const password=String(document.getElementById('secPass')?.value||'');
+    if(!email || !password){setLoginError('اكتب الإيميل وكلمة المرور');return;}
+    if(!window.sb){setLoginError('ضع SUPABASE_URL و SUPABASE_ANON_KEY الصحيحين داخل الملف أولًا');return;}
+    try{
+      const {data,error}=await window.sb.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      const profile=await loadProfile(data.user);
+      saveLocalSession(data.user,profile);
+      hideLoginError();
+      unlockUI();
+      audit('تسجيل دخول Supabase','دخول ناجح: '+email+' / '+profile.role);
+      addAuditRemote('login','دخول ناجح من لوحة الأدمن');
+    }catch(e){
+      setLoginError(e.message || 'فشل تسجيل الدخول');
+      audit('فشل دخول Supabase',email);
+    }
+  };
+
+  window.securityLogout=async function(){
+    try{ if(window.sb) await window.sb.auth.signOut(); }catch(e){}
+    audit('تسجيل خروج','إنهاء جلسة Supabase');
+    localStorage.removeItem(SESSION_KEY);
+    document.body.classList.add('secure-locked');
+  };
+
+  window.securityFillDemo=function(){
+    document.getElementById('secUser').value='mohamed.fares@gmail.com';
+    document.getElementById('secPass').focus();
+  };
+
+  window.currentSecuritySession=getLocalSession;
+  window.requireAdmin=function(action){
+    const s=getLocalSession();
+    if(!s){document.body.classList.add('secure-locked');return false;}
+    if(!FULL_ADMIN_ROLES.includes(s.role)){
+      alert('هذه العملية تحتاج صلاحية Admin أو Super Admin');
+      audit('رفض صلاحية',action||'عملية محمية');
+      return false;
+    }
+    return true;
+  };
+
+  window.showPage=function(id,el){
+    const s=getLocalSession();
+    if(!s){document.body.classList.add('secure-locked');return;}
+    const pages=ROLE_PAGES[s.role]||[];
+    if(!pages.includes('*') && !pages.includes(id)){
+      alert('غير مسموح لك بفتح هذه الصفحة');
+      audit('رفض فتح صفحة',id);
+      return;
+    }
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const page=document.getElementById(id);
+    if(page) page.classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    if(el) el.classList.add('active');
+    if(id==='users' && typeof renderUsersAdmin==='function') renderUsersAdmin();
+    if(id==='auditLog' && typeof renderAuditLog==='function') renderAuditLog();
+  };
+
+  async function bootSupabaseSession(){
+    if(!window.sb){document.body.classList.add('secure-locked');return;}
+    try{
+      const {data:{session}}=await window.sb.auth.getSession();
+      if(session?.user){
+        const profile=await loadProfile(session.user);
+        saveLocalSession(session.user,profile);
+        unlockUI();
+      }else if(getLocalSession()){
+        unlockUI();
+      }else{
+        document.body.classList.add('secure-locked');
+      }
+    }catch(e){
+      console.warn('Session check failed:',e.message||e);
+      localStorage.removeItem(SESSION_KEY);
+      document.body.classList.add('secure-locked');
+    }
+  }
+  window.addEventListener('load',()=>{
+    setTimeout(bootSupabaseSession,200);
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Enter' && document.body.classList.contains('secure-locked')) window.securityLoginSubmit();
+    });
+  });
 })();
 </script>
 
