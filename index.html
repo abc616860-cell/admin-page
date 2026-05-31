@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Fixora Pro - Full Professional Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com data: blob:; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js">
 
 /* V9: Professional printable invoice override */
@@ -82,10 +84,31 @@ function printInvoice(idv){
 @media(max-width:900px){.invoice-pro{width:100%;min-height:auto}.inv-pro-cover,.inv-pro-grid,.inv-pro-summary,.inv-pro-photos,.inv-pro-footer{grid-template-columns:1fr;display:grid}.inv-pro-meta{text-align:right}.inv-pro-body{padding:20px}.inv-pro-actions{position:sticky;bottom:10px;margin:10px}}
 @media print{body>*:not(#printArea){display:none!important}#printArea{display:block!important;background:#fff!important}.invoice-pro{width:100%!important;min-height:auto!important;box-shadow:none!important}.inv-pro-actions{display:none!important}.inv-pro-cover,.inv-pro-table th,.inv-pro-total{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:8mm}}
 
+
+
+/* V11 Admin Security Layer */
+body.secure-locked .app{display:none!important}
+.security-login{position:fixed;inset:0;z-index:200000;background:radial-gradient(circle at top right,#0b6bff33,transparent 34%),linear-gradient(135deg,#06172d,#071b34 52%,#020814);display:none;align-items:center;justify-content:center;padding:20px;direction:rtl}
+body.secure-locked .security-login{display:flex}.security-card{width:min(460px,100%);background:#fff;border:1px solid #dbe7f5;border-radius:28px;box-shadow:0 40px 100px rgba(0,0,0,.32);padding:26px}.security-brand{display:flex;gap:13px;align-items:center;margin-bottom:18px}.security-logo{width:58px;height:58px;border-radius:20px;background:linear-gradient(135deg,#176df7,#2fc987);display:grid;place-items:center;color:#fff;font-size:30px}.security-card h2{font-size:25px;margin-bottom:5px}.security-card p{color:#64748b;font-weight:800;line-height:1.8}.security-field{margin-top:13px}.security-field label{display:block;font-weight:900;margin-bottom:7px;color:#10213d}.security-field input,.security-field select{width:100%;height:52px;border:1px solid #dbe7f5;background:#f8fbff;border-radius:16px;padding:0 14px;font-weight:900;outline:none}.security-field input:focus{border-color:#176df7;box-shadow:0 0 0 5px rgba(23,109,247,.09)}.security-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;color:#64748b;font-weight:900;font-size:13px}.security-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.security-actions .btn{width:100%;height:50px}.security-error{display:none;margin-top:12px;border:1px solid #fecdd3;background:#fff1f2;color:#be123c;border-radius:14px;padding:11px;font-weight:900}.security-error.show{display:block}.secure-user-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid #dbe7f5;background:#f8fbff;border-radius:999px;padding:8px 12px;font-weight:900;color:#10213d}.audit-table{width:100%;border-collapse:collapse}.audit-table th,.audit-table td{padding:13px;border-bottom:1px solid #eef3fa;text-align:right;font-size:14px}.audit-table th{background:#f8fbff;color:#30405a}.secure-badge{display:inline-flex;align-items:center;gap:7px;background:#ecfdf5;color:#047857;border:1px solid #bbf7d0;border-radius:999px;padding:7px 11px;font-weight:900;font-size:12px}.secure-lock-note{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:16px;padding:12px;font-weight:900;margin-bottom:14px;line-height:1.8}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<script>document.body.classList.add('secure-locked');</script>
+<div id="securityLogin" class="security-login">
+  <div class="security-card">
+    <div class="security-brand"><div class="security-logo">🛡️</div><div><h2>تسجيل دخول الأدمن</h2><p>حماية لوحة التحكم والصلاحيات قبل عرض البيانات.</p></div></div>
+    <div class="secure-lock-note">بيانات الدخول التجريبية: <b>admin</b> / <b>admin123</b>. غيّرها قبل التشغيل الحقيقي.</div>
+    <div class="security-field"><label>اسم المستخدم</label><input id="secUser" autocomplete="username" placeholder="admin"></div>
+    <div class="security-field"><label>كلمة المرور</label><input id="secPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="security-row"><label><input id="secRemember" type="checkbox" checked> حفظ الجلسة</label><span class="secure-badge">Admin Only</span></div>
+    <div id="secError" class="security-error">بيانات الدخول غير صحيحة</div>
+    <div class="security-actions"><button class="btn" onclick="securityLoginSubmit()">دخول آمن</button><button class="btn light" onclick="securityFillDemo()">تجربة سريعة</button></div>
+  </div>
+</div>
+
 <div class="app">
   <main class="main">
     <header class="topbar">
@@ -158,8 +181,43 @@ function printInvoice(idv){
       </div>
 
       <div id="notifications" class="page"><div class="wide-grid"><div class="card"><div class="card-head"><h3>مركز الإشعارات</h3><button class="btn">إرسال إشعار تجريبي</button></div><div class="timeline" id="notifyCenter"></div></div><div class="card"><h3>قواعد التنبيه</h3><br><div class="switch-row"><b>طلب جديد بدون فني</b><span class="toggle"></span></div><div class="switch-row"><b>فاتورة متأخرة</b><span class="toggle"></span></div><div class="switch-row"><b>تقييم منخفض</b><span class="toggle"></span></div><div class="switch-row"><b>مهمة انتهت</b><span class="toggle"></span></div></div></div></div>
-      <div id="settings" class="page"><div class="section-grid"><div class="card"><h3>إعدادات النظام</h3><br><div class="pro-panel"><div class="pro-tile"><h4>هوية النظام</h4><p>Fixora Pro — لوحة تحكم صيانة منزلية وخدمات.</p></div><div class="pro-tile"><h4>حفظ البيانات</h4><p>النسخة الحالية مربوطة بـ Supabase عند إضافة بيانات المشروع، مع احتياطي LocalStorage.</p></div><div class="pro-tile"><h4>التصميم</h4><p>ستايل Dashboard احترافي مطابق للصورة: أزرق، أبيض، كروت، جداول، وتنبيهات.</p></div></div><br><button class="btn red" onclick="localStorage.removeItem(ORD);localStorage.removeItem(TECH);renderAll()">مسح بيانات التجربة</button></div><div class="card"><h3>شكل الفاتورة</h3><br><div class="invoice-preview"><div class="inv-head"><h2>FIXORA</h2><b>#INV-2026-001</b></div><div class="inv-body"><p>عميل: شركة الريان</p><p>الخدمة: صيانة دورية</p><div class="inv-total"><span>الإجمالي</span><span>15,750.00 ج.م</span></div></div></div></div></div></div>
+
+      <div id="users" class="page">
+        <div class="wide-grid">
+          <div class="card">
+            <div class="card-head"><h3>إدارة المستخدمين والصلاحيات</h3><button class="btn light" onclick="renderUsersAdmin()">تحديث</button></div>
+            <div class="mini-form">
+              <div class="field"><label>اسم المستخدم</label><input id="uUsername" placeholder="مثال: dispatcher1"></div>
+              <div class="field"><label>الاسم الكامل</label><input id="uFullName" placeholder="اسم الموظف"></div>
+              <div class="field"><label>البريد الإلكتروني</label><input id="uEmail" type="email" placeholder="user@example.com"></div>
+              <div class="field"><label>كلمة المرور</label><input id="uPassword" type="password" placeholder="كلمة مرور قوية"></div>
+              <div class="field"><label>الدور</label><select id="uRole"><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="viewer">Viewer</option></select></div>
+              <div class="field"><label>الحالة</label><select id="uActive"><option value="true">Active</option><option value="false">Disabled</option></select></div>
+              <div class="field" style="grid-column:1/-1"><label>الصلاحيات الإضافية</label><div id="uPermissions" class="choice-bar"></div></div>
+            </div>
+            <br>
+            <button class="btn" onclick="saveAdminUser()">حفظ المستخدم</button>
+            <button class="btn light" onclick="clearUserForm()">تفريغ</button>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>مراجعة الصلاحيات</h3><button class="btn light" onclick="exportUsersSecurity()">تصدير المستخدمين</button></div>
+            <div class="pro-panel" style="grid-template-columns:1fr">
+              <div class="pro-tile"><h4>Super/Admin</h4><p>إدارة المستخدمين، الطلبات، الفنيين، العملاء، الفواتير، التقارير، Audit Logs.</p></div>
+              <div class="pro-tile"><h4>Dispatcher</h4><p>استلام الطلبات، الإسناد، تحديث حالة الطلب، متابعة العميل.</p></div>
+              <div class="pro-tile"><h4>Technician</h4><p>بوابة الفني فقط، الطلبات المسندة له، التقرير والصور.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><h3>كل المستخدمين</h3><span class="status paid" id="usersCount">0 مستخدم</span></div>
+          <div class="table-wrap">
+            <table class="table"><thead><tr><th>المستخدم</th><th>الاسم</th><th>البريد</th><th>الدور</th><th>الحالة</th><th>الصلاحيات</th><th>إجراءات</th></tr></thead><tbody id="usersRows"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div id="settings" class="page"><div class="section-grid"><div class="card"><h3>إعدادات النظام</h3><br><div class="pro-panel"><div class="pro-tile"><h4>هوية النظام</h4><p>Fixora Pro — لوحة تحكم صيانة منزلية وخدمات.</p></div><div class="pro-tile"><h4>حفظ البيانات</h4><p>النسخة الحالية مربوطة بـ Supabase عند إضافة بيانات المشروع، مع احتياطي LocalStorage.</p></div><div class="pro-tile"><h4>التصميم</h4><p>ستايل Dashboard احترافي مطابق للصورة: أزرق، أبيض، كروت، جداول، وتنبيهات.</p></div></div><br><button class="btn red" onclick="secureClearDemo()">مسح بيانات التجربة</button></div><div class="card"><h3>شكل الفاتورة</h3><br><div class="invoice-preview"><div class="inv-head"><h2>FIXORA</h2><b>#INV-2026-001</b></div><div class="inv-body"><p>عميل: شركة الريان</p><p>الخدمة: صيانة دورية</p><div class="inv-total"><span>الإجمالي</span><span>15,750.00 ج.م</span></div></div></div></div></div></div>
       <div id="reports" class="page"><div class="card"><h3>التقارير</h3><div class="kpis" style="margin-top:18px"><div class="kpi"><div><h4>نسبة الإنجاز</h4><strong>87%</strong><p><em>+9%</em> تحسن</p></div><div class="kicon ki-green">✅</div></div><div class="kpi"><div><h4>متوسط الطلب</h4><strong>1,280</strong><p>ج.م للطلب</p></div><div class="kicon ki-blue">📌</div></div><div class="kpi"><div><h4>طلبات متأخرة</h4><strong>4</strong><p>تحتاج متابعة</p></div><div class="kicon ki-orange">⏱</div></div><div class="kpi"><div><h4>فنيين نشطين</h4><strong id="rTech">8</strong><p>جاهزين للعمل</p></div><div class="kicon ki-purple">👷</div></div></div></div></div>
+      <div id="auditLog" class="page"><div class="card"><div class="card-head"><h3>سجل الأمان والحركات</h3><button class="btn light" onclick="renderAuditLog()">تحديث</button></div><div class="secure-lock-note">يسجل النظام عمليات الدخول، إضافة الطلبات، إضافة الفنيين، تغيير الحالة، الحذف، الطباعة، ومسح البيانات.</div><div class="table-wrap"><table class="audit-table"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الصلاحية</th><th>العملية</th><th>التفاصيل</th></tr></thead><tbody id="auditRows"></tbody></table></div></div></div>
     </section>
   </main>
   <aside class="sidebar">
@@ -178,6 +236,7 @@ function printInvoice(idv){
       <button onclick="showPage('payments',this)"><span><i>💳</i> المدفوعات</span></button>
       <button onclick="showPage('reports',this)"><span><i>▤</i> التقارير</span></button>
       <button onclick="showPage('notifications',this)"><span><i>🔔</i> الإشعارات</span></button>
+      <button onclick="showPage('users',this)"><span><i>🔐</i> المستخدمين والصلاحيات</span></button>
       <button onclick="showPage('settings',this)"><span><i>⚙</i> الإعدادات</span></button>
     </nav>
     <div class="pro-box"><b>النسخة الاحترافية 👑</b><p>استمتع بجميع المميزات مع تصميم مشابه للصورة: Dashboard نظيف، كروت منظمة، تقارير وفواتير.</p><button>ترقية الآن</button></div>
@@ -853,6 +912,427 @@ const oldRender=window.renderAll; if(typeof oldRender==='function'){window.rende
 const oldShow=window.showPage; if(typeof oldShow==='function'){window.showPage=function(){oldShow.apply(this,arguments); setTimeout(enhance,0)}}
 document.addEventListener('click',e=>{if(!e.target.closest('.select-panel-ui')){document.querySelectorAll('.select-panel-ui.open').forEach(x=>x.classList.remove('open'));document.body.classList.remove('select-panel-backdrop');}});
 window.addEventListener('load',()=>setTimeout(enhance,250));
+})();
+</script>
+
+
+
+<!-- V12: XSS + Upload Security Layer using DOMPurify -->
+<script>
+(function(){
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg','image/png','image/webp'];
+  function fallbackStripHTML(value){
+    return String(value ?? '')
+      .replace(/<\/?(script|iframe|object|embed|form|meta|link|style)[^>]*>/gi,'')
+      .replace(/[<>]/g,'')
+      .replace(/javascript:/gi,'')
+      .replace(/on\w+\s*=/gi,'');
+  }
+  window.secureText = function(value){
+    const raw = String(value ?? '');
+    if(window.DOMPurify){
+      return DOMPurify.sanitize(raw, {ALLOWED_TAGS: [], ALLOWED_ATTR: [], KEEP_CONTENT: true});
+    }
+    return fallbackStripHTML(raw);
+  };
+  window.secureHTML = function(html){
+    if(window.DOMPurify){
+      return DOMPurify.sanitize(String(html ?? ''), {
+        FORBID_TAGS: ['script','iframe','object','embed','form','meta','link','style'],
+        FORBID_ATTR: ['onerror','onload','onmouseover','onfocus','oninput','onchange','onsubmit'],
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data:image\/(?:png|jpeg|jpg|webp);base64,|blob:)|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i
+      });
+    }
+    return fallbackStripHTML(html);
+  };
+  function isSafeImageDataUrl(v){
+    return typeof v === 'string' && /^data:image\/(png|jpe?g|webp);base64,/i.test(v);
+  }
+  function cleanObject(input, key){
+    if(Array.isArray(input)){
+      return input.map(v => cleanObject(v, key)).filter(v => v !== null && v !== undefined);
+    }
+    if(input && typeof input === 'object'){
+      const out = {};
+      Object.keys(input).forEach(k => out[k] = cleanObject(input[k], k));
+      return out;
+    }
+    if(typeof input === 'string'){
+      if(/photo|image|img|src/i.test(String(key||''))){
+        return isSafeImageDataUrl(input) || input.startsWith('blob:') ? input : '';
+      }
+      return window.secureText(input);
+    }
+    return input;
+  }
+  window.secureCleanData = cleanObject;
+  function wrapStorageFunctions(){
+    if(typeof window.load === 'function' && !window.load.__xssProtected){
+      const oldLoad = window.load;
+      window.load = function(k){ return cleanObject(oldLoad.call(this,k)); };
+      window.load.__xssProtected = true;
+    }
+    if(typeof window.save === 'function' && !window.save.__xssProtected){
+      const oldSave = window.save;
+      window.save = function(k,v){ return oldSave.call(this,k,cleanObject(v)); };
+      window.save.__xssProtected = true;
+    }
+  }
+  function wrapFilesToArray(){
+    if(typeof window.filesToArray === 'function' && !window.filesToArray.__uploadProtected){
+      const old = window.filesToArray;
+      window.filesToArray = async function(id){
+        const input = document.getElementById(id);
+        const files = [...(input?.files || [])];
+        const invalid = files.filter(f => !ALLOWED_IMAGE_TYPES.includes(f.type) || f.size > MAX_IMAGE_SIZE);
+        if(invalid.length){
+          alert('مسموح برفع صور فقط بصيغ JPG / PNG / WEBP وبحد أقصى 5MB لكل صورة');
+          if(input) input.value='';
+          return [];
+        }
+        const arr = await old.call(this,id);
+        return arr.filter(isSafeImageDataUrl);
+      };
+      window.filesToArray.__uploadProtected = true;
+    }
+  }
+  function hardenInputs(){
+    document.querySelectorAll('input[type="file"]').forEach(el => {
+      el.setAttribute('accept','image/png,image/jpeg,image/webp');
+    });
+    document.querySelectorAll('input:not([type="file"]), textarea').forEach(el => {
+      if(el.dataset.xssGuard === '1') return;
+      el.dataset.xssGuard = '1';
+      el.addEventListener('input', function(){
+        if(/[<>]|javascript:|on\w+\s*=/i.test(this.value)){
+          this.value = window.secureText(this.value);
+        }
+      });
+    });
+  }
+  function boot(){wrapStorageFunctions(); wrapFilesToArray(); hardenInputs();}
+  const oldRenderAll = window.renderAll;
+  if(typeof oldRenderAll === 'function'){
+    window.renderAll = function(){boot(); return oldRenderAll.apply(this, arguments);};
+  }
+  document.addEventListener('DOMContentLoaded', boot);
+  window.addEventListener('load', function(){boot(); setTimeout(boot,250);});
+})();
+</script>
+
+
+<!-- V11: Admin Security Layer -->
+<script>
+(function(){
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  const AUDIT_KEY='FIXORA_AUDIT_LOG_V11';
+  const SECURITY_USERS=[{username:'admin',password:'admin123',name:'مدير النظام',role:'admin',permissions:['*']}];
+  const ROLE_PAGES={admin:['*'],dispatcher:['dashboard','orders','assign','clients','clientTracking','notifications','reports'],technician:['techPortal','clientTracking'],viewer:['dashboard','reports','clientTracking']};
+  function now(){return new Date().toLocaleString('ar-SA',{hour12:false});}
+  function getSession(){try{const s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); if(!s||!s.expiresAt||Date.now()>s.expiresAt){localStorage.removeItem(SESSION_KEY);return null} return s;}catch(e){return null}}
+  function saveSession(user,remember){const hours=remember?12:2; const token=crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()); const s={token,username:user.username,name:user.name,role:user.role,loginAt:new Date().toISOString(),expiresAt:Date.now()+hours*60*60*1000}; localStorage.setItem(SESSION_KEY,JSON.stringify(s)); return s;}
+  function can(page){const s=getSession(); if(!s)return false; const pages=ROLE_PAGES[s.role]||[]; return pages.includes('*')||pages.includes(page);}
+  window.currentSecuritySession=getSession;
+  window.securityAudit=function(action,details){const s=getSession()||{username:'غير مسجل',role:'none'}; const row={time:now(),user:s.username,role:s.role,action,details:details||''}; let arr=[]; try{arr=JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]')}catch(e){} arr.unshift(row); localStorage.setItem(AUDIT_KEY,JSON.stringify(arr.slice(0,300))); if(typeof renderAuditLog==='function') renderAuditLog();};
+  window.renderAuditLog=function(){const body=document.getElementById('auditRows'); if(!body)return; let arr=[]; try{arr=JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]')}catch(e){} body.innerHTML=arr.map(x=>`<tr><td>${x.time}</td><td>${x.user}</td><td>${x.role}</td><td><b>${x.action}</b></td><td>${x.details||'-'}</td></tr>`).join('')||'<tr><td colspan="5">لا توجد حركات مسجلة حتى الآن</td></tr>';};
+  function unlockUI(){document.body.classList.remove('secure-locked'); const s=getSession(); document.querySelectorAll('.user b').forEach(x=>x.textContent=s?.name||'مدير النظام'); document.querySelectorAll('.user small').forEach(x=>x.textContent='صلاحية: '+(s?.role||'-')); const top=document.querySelector('.top-icons'); if(top&&!document.getElementById('secLogoutBtn')){const b=document.createElement('button'); b.id='secLogoutBtn'; b.className='btn light'; b.textContent='خروج آمن'; b.onclick=securityLogout; top.appendChild(b);} renderAuditLog();}
+  window.securityFillDemo=function(){document.getElementById('secUser').value='admin';document.getElementById('secPass').value='admin123';};
+  window.securityLoginSubmit=function(){const u=(document.getElementById('secUser').value||'').trim(); const p=(document.getElementById('secPass').value||'').trim(); const user=SECURITY_USERS.find(x=>x.username===u&&x.password===p); const err=document.getElementById('secError'); if(!user){err.classList.add('show'); securityAudit('فشل دخول','محاولة باسم: '+u); return;} saveSession(user,document.getElementById('secRemember').checked); err.classList.remove('show'); unlockUI(); securityAudit('تسجيل دخول','دخول ناجح إلى لوحة الأدمن'); if(typeof renderAll==='function')renderAll();};
+  window.securityLogout=function(){securityAudit('تسجيل خروج','إنهاء الجلسة الحالية'); localStorage.removeItem(SESSION_KEY); document.body.classList.add('secure-locked');};
+  window.requireAdmin=function(action){const s=getSession(); if(!s){document.body.classList.add('secure-locked'); return false;} if(s.role!=='admin'){alert('هذه العملية تحتاج صلاحية Admin'); securityAudit('رفض صلاحية',action||'عملية محمية'); return false;} return true;};
+  window.secureClearDemo=function(){if(!requireAdmin('مسح بيانات التجربة'))return; const pass=prompt('اكتب كلمة مرور الأدمن لتأكيد المسح'); if(pass!=='admin123'){alert('تم إلغاء العملية'); securityAudit('رفض مسح البيانات','كلمة مرور تأكيد غير صحيحة'); return;} localStorage.removeItem(ORD); localStorage.removeItem(TECH); securityAudit('مسح بيانات التجربة','تم مسح الطلبات والفنيين من LocalStorage'); if(typeof renderAll==='function')renderAll();};
+  const oldShow=window.showPage; if(typeof oldShow==='function'){window.showPage=function(id,el){if(!getSession()){document.body.classList.add('secure-locked');return} if(!can(id)){alert('غير مسموح لك بفتح هذه الصفحة'); securityAudit('رفض فتح صفحة',id); return;} oldShow.apply(this,arguments); if(id==='auditLog')renderAuditLog();};}
+  const oldAddOrder=window.addOrder; if(typeof oldAddOrder==='function'){window.addOrder=function(){if(!requireAdmin('إضافة طلب'))return; const name=(document.getElementById('oName')?.value||'').trim(); const phone=(document.getElementById('oPhone')?.value||'').trim(); if(phone && !/^05\d{8}$/.test(phone)){alert('رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام');return;} oldAddOrder.apply(this,arguments); securityAudit('إضافة طلب','عميل: '+(name||'عميل جديد'));};}
+  const oldAddTech=window.addTech; if(typeof oldAddTech==='function'){window.addTech=function(){if(!requireAdmin('إضافة فني'))return; const name=(document.getElementById('tName')?.value||'').trim(); oldAddTech.apply(this,arguments); securityAudit('إضافة فني','الفني: '+(name||'فني جديد'));};}
+  const oldDeleteOrder=window.deleteOrder; if(typeof oldDeleteOrder==='function'){window.deleteOrder=function(idv){if(!requireAdmin('حذف طلب '+idv))return; const pass=prompt('لتأكيد الحذف اكتب كلمة مرور الأدمن'); if(pass!=='admin123'){securityAudit('إلغاء حذف','طلب: '+idv);return;} oldDeleteOrder.apply(this,arguments); securityAudit('حذف طلب','رقم الطلب: '+idv);};}
+  const oldUpdateStatus=window.updateOrderStatus; if(typeof oldUpdateStatus==='function'){window.updateOrderStatus=function(idv){if(!requireAdmin('تغيير حالة الطلب '+idv))return; oldUpdateStatus.apply(this,arguments); securityAudit('تغيير حالة طلب','رقم الطلب: '+idv);};}
+  const oldEditOrder=window.editOrder; if(typeof oldEditOrder==='function'){window.editOrder=function(idv){if(!requireAdmin('تعديل طلب '+idv))return; securityAudit('فتح تعديل طلب','رقم الطلب: '+idv); return oldEditOrder.apply(this,arguments);};}
+  const oldPrintInvoice=window.printInvoice; if(typeof oldPrintInvoice==='function'){window.printInvoice=function(idv){if(!getSession()){document.body.classList.add('secure-locked');return} securityAudit('طباعة فاتورة','رقم الطلب: '+(idv||'-')); return oldPrintInvoice.apply(this,arguments);};}
+  window.addEventListener('load',()=>{if(getSession())unlockUI(); else document.body.classList.add('secure-locked'); document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.body.classList.contains('secure-locked'))securityLoginSubmit();});});
+})();
+</script>
+
+
+<!-- V13: Final Output Encoding + Sanitization + Audit Hardening (Design unchanged) -->
+<script>
+(function(){
+  'use strict';
+  const RLS_POLICY_NOTES = {
+    enabled: true,
+    orders: 'Enable RLS in Supabase and allow customers to see own rows, technicians assigned rows, admins all rows.',
+    storage: 'Use private bucket, signed URLs, and restrict MIME to image/jpeg, image/png, image/webp.'
+  };
+  window.FIXORA_SECURITY_RLS_NOTES = RLS_POLICY_NOTES;
+
+  function raw(v){ return String(v ?? ''); }
+  function sanitize(v){
+    const s = raw(v);
+    if(window.DOMPurify){
+      return DOMPurify.sanitize(s, {ALLOWED_TAGS: [], ALLOWED_ATTR: [], KEEP_CONTENT: true}).trim();
+    }
+    return s.replace(/<[^>]*>?/gm,'').replace(/javascript:/gi,'').replace(/on\w+\s*=/gi,'').trim();
+  }
+  function enc(v){
+    return sanitize(v)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+  function attr(v){ return enc(v).replace(/`/g,'&#96;'); }
+  function num(v){ const n=Number(v||0); return Number.isFinite(n)?n:0; }
+  function arr(k){ try{return load(k)||[]}catch(e){return[]} }
+  function safeStatusClass(st){ st=sanitize(st); return st==='مكتملة'?'paid':st==='متأخرة'?'delayed':'unpaid'; }
+  function safeOrderClass(st){ try{return orderClass(sanitize(st))}catch(e){return ''} }
+  function safeDotClass(st){ try{return dotClass(sanitize(st))}catch(e){return 'blue'} }
+  function setHTML(el, html){
+    if(!el) return;
+    el.innerHTML = window.DOMPurify
+      ? DOMPurify.sanitize(html, {
+          ADD_ATTR:['onclick','style'],
+          ALLOWED_URI_REGEXP:/^(?:(?:https?|mailto|tel|data:image\/(?:png|jpeg|webp);base64):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i
+        })
+      : html;
+  }
+
+  window.fixoraSanitizeInput = sanitize;
+  window.fixoraEncodeOutput = enc;
+
+  const oldSecurityAudit = window.securityAudit;
+  if(typeof oldSecurityAudit === 'function'){
+    window.securityAudit = function(action, details){
+      return oldSecurityAudit.call(this, sanitize(action), sanitize(details));
+    };
+  }
+
+  window.renderAuditLog = function(){
+    const body=document.getElementById('auditRows'); if(!body)return;
+    let logs=[]; try{logs=JSON.parse(localStorage.getItem('FIXORA_AUDIT_LOG_V11')||'[]')}catch(e){}
+    const rows = logs.map(x=>`<tr><td>${enc(x.time)}</td><td>${enc(x.user)}</td><td>${enc(x.role)}</td><td><b>${enc(x.action)}</b></td><td>${enc(x.details||'-')}</td></tr>`).join('') || '<tr><td colspan="5">لا توجد حركات مسجلة حتى الآن</td></tr>';
+    setHTML(body, rows);
+  };
+
+  window.renderOrders = function(){
+    if(typeof v4Init==='function') v4Init();
+    const orders = (typeof filteredOrders==='function' ? filteredOrders() : arr(ORD));
+    const all = arr(ORD);
+    const latest = all.slice(0,4).map(x=>`<div class="order-row"><span class="pill ${safeOrderClass(x.status)}">${enc(x.status)}</span><div><b>${enc(x.service)}</b><p>عميل: ${enc(x.name)}</p></div><span class="oid">${enc(x.id)}</span><i class="dot ${safeDotClass(x.status)}"></i></div>`).join('') || '<div class="empty-state">لا توجد طلبات</div>';
+    setHTML(window.latestOrders, latest);
+    if(window.filterSummary) filterSummary.textContent = `عرض ${orders.length} من إجمالي ${all.length} طلب`;
+    const rows = orders.map(x=>{
+      const id=attr(x.id), status=sanitize(x.status), rating=x.rating?`<span class="photo-count">★ ${enc(x.rating)}</span>`:'';
+      return `<div class="tech-card"><div style="display:flex;gap:12px;align-items:center"><div class="avatar">🔧</div><div><b>${enc(x.id)} - ${enc(x.service)}</b><p style="color:var(--muted);margin-top:4px">${enc(x.name)} · ${enc(x.phone||'-')} · ${enc(x.city)} · ${fmt(num(x.price))} ج.م</p><span class="status ${safeStatusClass(status)}">${enc(status)}</span> <span class="photo-count">📷 ${typeof photoCount==='function'?photoCount(x):0} صورة</span> ${rating}</div></div><div class="action-set"><button class="mini-btn details-btn" onclick="openOrderDetails('${id}')">تفاصيل</button><button class="mini-btn green" onclick="updateOrderStatus('${id}')">التالي</button><button class="mini-btn edit-btn" onclick="editOrder('${id}')">تعديل كامل</button><button class="mini-btn" onclick="openPhotoModal('${id}')">صور</button><button class="mini-btn green" onclick="openRating('${id}')">تقييم</button><button class="mini-btn orange" onclick="printInvoice('${id}')">فاتورة</button><button class="mini-btn red" onclick="deleteOrder('${id}')">حذف</button></div></div>`;
+    }).join('') || '<div class="empty-state">لا توجد طلبات مطابقة</div>';
+    setHTML(window.allOrders, rows);
+  };
+
+  window.renderInvoices = function(){
+    const orders = arr(ORD);
+    const rows = orders.map(x=>{
+      const id=attr(x.id), status=sanitize(x.status);
+      const pay = status==='مكتملة'?'مدفوعة':status==='متأخرة'?'متأخرة':'غير مدفوعة';
+      return `<tr><td>${enc(typeof inv==='function'?inv():x.id)}</td><td>${enc(x.name)}</td><td>${enc(x.date||new Date().toISOString().slice(0,10))}</td><td>${fmt(num(x.price))} ج.م</td><td><span class="status ${safeStatusClass(status)}">${enc(pay)}</span></td><td><button class="mini-btn orange" onclick="printInvoice('${id}')">طباعة</button></td></tr>`;
+    }).join('');
+    setHTML(window.invoiceRows, rows); setHTML(window.invoiceRows2, rows);
+  };
+
+  window.renderTech = function(){
+    const techs = arr(TECH);
+    const rows = techs.map(t=>`<div class="tech-card"><div style="display:flex;gap:12px;align-items:center"><div class="avatar">👨‍🔧</div><div><b>${enc(t.name)}</b><p style="color:var(--muted);margin-top:4px">${enc(t.skill)} · ${enc(t.city)}</p></div></div><b>★ ${enc(t.rate)}</b></div>`).join('') || '<p>لا يوجد فنيين</p>';
+    setHTML(window.techList, rows); if(window.rTech) rTech.textContent=techs.length||0;
+  };
+
+  window.renderClients = function(){
+    const orders=arr(ORD), m={};
+    orders.forEach(x=>{const k=sanitize(x.phone||x.name||'عميل'); if(!m[k])m[k]={name:x.name,phone:x.phone,count:0,total:0,last:x.service}; m[k].count++; m[k].total+=num(x.price); m[k].last=x.service;});
+    const rows=Object.values(m).map(c=>`<div class="tech-card"><div style="display:flex;gap:12px;align-items:center"><div class="avatar">👤</div><div><b>${enc(c.name)}</b><p style="color:var(--muted);margin-top:4px">${enc(c.phone||'-')} · ${enc(c.count)} طلب · آخر خدمة: ${enc(c.last)}</p></div></div><b>${fmt(num(c.total))} ج.م</b></div>`).join('') || '<div class="empty-state">لا يوجد عملاء</div>';
+    setHTML(window.clientsList, rows);
+  };
+
+  window.renderTechPortalV8 = function(){
+    const techs=arr(TECH), ordersAll=arr(ORD), sel=document.getElementById('portalTechV8'); if(!sel)return;
+    if(!sel.dataset.ready || sel.options.length!==techs.length){ setHTML(sel, techs.map(t=>`<option value="${attr(t.id)}">${enc(t.name)} - ${enc(t.skill||'-')} - ${enc(t.city||'-')}</option>`).join('')); sel.dataset.ready='1'; }
+    const t=(typeof techByIdV8==='function'?techByIdV8(sel.value):techs.find(x=>x.id===sel.value))||techs[0];
+    if(!t){ setHTML(window.portalTechSummaryV8,'<div class="empty-v8">لا يوجد فنيين</div>'); setHTML(window.portalOrdersV8,''); return; }
+    const orders=ordersAll.filter(o=>o.techId===t.id), done=orders.filter(o=>o.status==='مكتملة').length, income=orders.reduce((s,o)=>s+num(o.price),0);
+    setHTML(window.portalTechSummaryV8, `<div class="profile-card" style="margin:0"><div class="avatar">👨‍🔧</div><div><h3>${enc(t.name)}</h3><p>${enc(t.skill||'-')} · ${enc(t.city||'-')} · ★ ${enc(t.rate||4.8)}</p></div></div><div class="summary-chip-v8">طلبات مسندة<b>${orders.length}</b></div><div class="summary-chip-v8">طلبات مكتملة<b>${done}</b></div><div class="summary-chip-v8">إيرادات مرتبطة<b>${fmt(income)} ج.م</b></div>`);
+    const stages=window.V8_STAGES||['جديدة','استلم الفني','تحرك الفني','جاري الإصلاح','مكتملة'];
+    const rows=orders.map(o=>`<div class="portal-order-v8"><div><h3>${enc(o.id)} - ${enc(o.service||'-')}</h3><p class="muted-v8">${enc(o.name||'-')} · ${enc(o.phone||'-')} · ${enc(o.city||'-')} · ${fmt(num(o.price))} ج.م</p><span class="status ${safeStatusClass(o.status)}">${enc(o.status)}</span></div><div class="stage-actions-v8">${stages.map(st=>`<button class="stage-btn-v8 ${o.status===st?'active':''}" onclick="setOrderStageV8('${attr(o.id)}','${attr(st)}')">${enc(st)}</button>`).join('')}</div></div>`).join('') || '<div class="empty-v8">لا توجد طلبات مسندة لهذا الفني</div>';
+    setHTML(window.portalOrdersV8, rows);
+  };
+
+  window.renderClientTrackingV8 = function(){
+    const q=sanitize(document.getElementById('trackInputV8')?.value||'').replace('#','').trim(); const box=document.getElementById('trackingResultV8'); if(!box)return;
+    const orders=arr(ORD), techs=arr(TECH); const o=orders.find(x=>sanitize(x.id).replace('#','')===q || sanitize(x.phone)===q) || orders[0];
+    if(!o){ setHTML(box,'<div class="empty-v8">لا يوجد طلب مطابق. جرّب رقم الطلب أو الجوال.</div>'); return; }
+    const stages=window.V8_STAGES||['جديدة','استلم الفني','تحرك الفني','جاري الإصلاح','مكتملة']; const idx=Math.max(0, stages.indexOf(o.status)); const t=techs.find(x=>x.id===o.techId)||{};
+    const html=`<div class="track-card-v8"><div class="track-top-v8"><div><h3>طلب ${enc(o.id)}</h3><p class="muted-v8">${enc(o.service||'-')} للعميل ${enc(o.name||'-')}</p></div><span class="status ${safeStatusClass(o.status)}">${enc(o.status)}</span></div><div class="track-line-v8">${stages.map((st,i)=>`<div class="track-step-v8 ${i<idx?'done':i===idx?'current':''}">${i<idx?'✅':i===idx?'📍':'○'}<br>${enc(st)}</div>`).join('')}</div><div class="track-info-v8"><div><small>العميل</small><b>${enc(o.name||'-')}</b></div><div><small>الجوال</small><b>${enc(o.phone||'-')}</b></div><div><small>المدينة</small><b>${enc(o.city||'-')}</b></div><div><small>الفني المسند</small><b>${enc(t.name||'لم يتم الإسناد بعد')}</b></div><div><small>تخصص الفني</small><b>${enc(t.skill||'-')}</b></div><div><small>القيمة</small><b>${fmt(num(o.price))} ج.م</b></div></div></div>`;
+    setHTML(box, html);
+  };
+
+  const oldPrintInvoice = window.printInvoice;
+  window.printInvoice = function(idv){
+    if(typeof currentSecuritySession==='function' && !currentSecuritySession()){document.body.classList.add('secure-locked');return;}
+    const x=arr(ORD).find(i=>i.id===idv)||arr(ORD)[0]; if(!x)return;
+    const p=document.getElementById('printArea'); if(!p)return;
+    const html=`<div class="invoice-paper"><div class="head"><div><h1>FIXORA PRO</h1><p>فاتورة صيانة احترافية</p></div><div><b>${enc(x.id)}</b><br>${enc(x.date||new Date().toISOString().slice(0,10))}</div></div><div class="body"><div class="line"><span>العميل</span><b>${enc(x.name||'-')}</b></div><div class="line"><span>الجوال</span><b>${enc(x.phone||'-')}</b></div><div class="line"><span>الخدمة</span><b>${enc(x.service||'-')}</b></div><div class="line"><span>المدينة</span><b>${enc(x.city||'-')}</b></div><div class="line"><span>الحالة</span><b>${enc(x.status||'-')}</b></div><div class="total"><span>الإجمالي</span><span>${fmt(num(x.price))} ج.م</span></div></div></div>`;
+    setHTML(p, html); p.style.display='block'; if(typeof securityAudit==='function')securityAudit('طباعة فاتورة','رقم الطلب: '+sanitize(idv||'-')); window.print(); setTimeout(()=>p.style.display='none',300);
+  };
+
+  const oldRenderAll = window.renderAll;
+  if(typeof oldRenderAll === 'function'){
+    window.renderAll = function(){
+      oldRenderAll.apply(this, arguments);
+      try{ renderOrders(); renderInvoices(); renderTech(); renderClients(); renderAuditLog(); }catch(e){ console.warn('Security render refresh skipped', e); }
+    };
+  }
+})();
+</script>
+
+
+
+<!-- V14: Users & Permissions Admin Module (Design unchanged) -->
+<script>
+(function(){
+  'use strict';
+  const USERS_KEY='FIXORA_ADMIN_USERS_V14';
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  const DEFAULT_USERS=[
+    {id:'root-admin',username:'admin',password:'admin123',full_name:'مدير النظام',email:'admin@fixora.local',role:'admin',is_active:true,permissions:['*'],created_at:new Date().toISOString()}
+  ];
+  const PERMISSIONS=[
+    ['view_dashboard','الرئيسية'],['manage_orders','إدارة الطلبات'],['assign_orders','الإسناد'],['manage_technicians','الفنيين'],
+    ['manage_clients','العملاء'],['manage_invoices','الفواتير'],['view_reports','التقارير'],['manage_users','المستخدمين'],
+    ['view_audit','Audit Log'],['system_settings','الإعدادات']
+  ];
+  const ROLE_PERMISSIONS={
+    admin:['*'],
+    dispatcher:['view_dashboard','manage_orders','assign_orders','manage_clients','view_reports'],
+    technician:['view_my_orders','update_my_orders'],
+    viewer:['view_dashboard','view_reports']
+  };
+  function clean(v){return window.fixoraSanitizeInput?window.fixoraSanitizeInput(v):String(v||'').replace(/<[^>]*>/g,'').trim();}
+  function esc(v){return window.fixoraEncodeOutput?window.fixoraEncodeOutput(v):clean(v).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+  function loadUsers(){let users=[];try{users=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')}catch(e){} if(!users.length){users=DEFAULT_USERS; localStorage.setItem(USERS_KEY,JSON.stringify(users));} return users;}
+  function saveUsers(users){localStorage.setItem(USERS_KEY,JSON.stringify(users));}
+  function currentSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
+  function isAdmin(){const s=currentSession(); return s && s.role==='admin';}
+  function audit(action,details){if(typeof window.securityAudit==='function')window.securityAudit(clean(action),clean(details||''));}
+  function canManageUsers(){if(!isAdmin()){alert('إدارة المستخدمين تحتاج صلاحية Admin'); audit('رفض صلاحية','محاولة فتح/تعديل المستخدمين'); return false;} return true;}
+  window.renderUserPermissions = function(){
+    const box=document.getElementById('uPermissions'); if(!box)return;
+    box.innerHTML=PERMISSIONS.map(([id,label])=>`<label class="choice-chip" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" value="${esc(id)}"> ${esc(label)}</label>`).join('');
+  };
+  window.clearUserForm=function(){
+    ['uUsername','uFullName','uEmail','uPassword'].forEach(id=>{const el=document.getElementById(id); if(el)el.value='';});
+    const r=document.getElementById('uRole'); if(r)r.value='dispatcher';
+    const a=document.getElementById('uActive'); if(a)a.value='true';
+    document.querySelectorAll('#uPermissions input').forEach(x=>x.checked=false);
+    const f=document.getElementById('uUsername'); if(f)f.dataset.editId='';
+  };
+  window.editAdminUser=function(id){
+    if(!canManageUsers())return;
+    const u=loadUsers().find(x=>x.id===id); if(!u)return;
+    document.getElementById('uUsername').value=clean(u.username);
+    document.getElementById('uUsername').dataset.editId=u.id;
+    document.getElementById('uFullName').value=clean(u.full_name);
+    document.getElementById('uEmail').value=clean(u.email);
+    document.getElementById('uPassword').value='';
+    document.getElementById('uRole').value=u.role;
+    document.getElementById('uActive').value=String(!!u.is_active);
+    document.querySelectorAll('#uPermissions input').forEach(x=>x.checked=(u.permissions||[]).includes(x.value));
+    audit('فتح تعديل مستخدم',u.username);
+  };
+  window.toggleAdminUser=function(id){
+    if(!canManageUsers())return;
+    const users=loadUsers(); const u=users.find(x=>x.id===id); if(!u)return;
+    if(u.username==='admin'){alert('لا يمكن تعطيل المستخدم الأساسي admin');return;}
+    u.is_active=!u.is_active; u.updated_at=new Date().toISOString(); saveUsers(users); renderUsersAdmin(); audit(u.is_active?'تفعيل مستخدم':'تعطيل مستخدم',u.username);
+  };
+  window.deleteAdminUser=function(id){
+    if(!canManageUsers())return;
+    const users=loadUsers(); const u=users.find(x=>x.id===id); if(!u)return;
+    if(u.username==='admin'){alert('لا يمكن حذف المستخدم الأساسي admin');return;}
+    if(!confirm('تأكيد حذف المستخدم؟'))return;
+    saveUsers(users.filter(x=>x.id!==id)); renderUsersAdmin(); audit('حذف مستخدم',u.username);
+  };
+  window.saveAdminUser=function(){
+    if(!canManageUsers())return;
+    const username=clean(document.getElementById('uUsername')?.value);
+    const full_name=clean(document.getElementById('uFullName')?.value);
+    const email=clean(document.getElementById('uEmail')?.value);
+    const password=clean(document.getElementById('uPassword')?.value);
+    const role=clean(document.getElementById('uRole')?.value||'viewer');
+    const is_active=document.getElementById('uActive')?.value==='true';
+    const extra=[...document.querySelectorAll('#uPermissions input:checked')].map(x=>clean(x.value));
+    const editId=document.getElementById('uUsername')?.dataset.editId||'';
+    if(!username || !full_name || !email){alert('اكتب اسم المستخدم والاسم والبريد');return;}
+    if(!editId && !password){alert('اكتب كلمة مرور للمستخدم الجديد');return;}
+    if(password && password.length<6){alert('كلمة المرور لا تقل عن 6 أحرف');return;}
+    let users=loadUsers();
+    if(users.some(u=>u.username===username && u.id!==editId)){alert('اسم المستخدم موجود بالفعل');return;}
+    if(users.some(u=>u.email===email && u.id!==editId)){alert('البريد موجود بالفعل');return;}
+    let u=users.find(x=>x.id===editId);
+    if(u){
+      Object.assign(u,{username,full_name,email,role,is_active,permissions:extra,updated_at:new Date().toISOString()});
+      if(password)u.password=password;
+      audit('تعديل مستخدم',username+' / '+role);
+    }else{
+      users.unshift({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),username,password,full_name,email,role,is_active,permissions:extra,created_at:new Date().toISOString()});
+      audit('إنشاء مستخدم',username+' / '+role);
+    }
+    saveUsers(users); clearUserForm(); renderUsersAdmin();
+  };
+  window.renderUsersAdmin=function(){
+    renderUserPermissions();
+    const rows=document.getElementById('usersRows'); if(!rows)return;
+    const users=loadUsers();
+    document.getElementById('usersCount').textContent=users.length+' مستخدم';
+    rows.innerHTML=users.map(u=>{
+      const base=ROLE_PERMISSIONS[u.role]||[];
+      const perms=(u.permissions||[]).includes('*')||base.includes('*')?'كل الصلاحيات':[...new Set([...base,...(u.permissions||[])])].join(', ');
+      return `<tr>
+        <td><b>${esc(u.username)}</b></td><td>${esc(u.full_name)}</td><td>${esc(u.email)}</td><td><span class="status paid">${esc(u.role)}</span></td>
+        <td><span class="status ${u.is_active?'paid':'delayed'}">${u.is_active?'Active':'Disabled'}</span></td><td>${esc(perms)}</td>
+        <td><button class="mini-btn" onclick="editAdminUser('${esc(u.id)}')">تعديل</button> <button class="mini-btn" onclick="toggleAdminUser('${esc(u.id)}')">${u.is_active?'تعطيل':'تفعيل'}</button> <button class="mini-btn" onclick="deleteAdminUser('${esc(u.id)}')">حذف</button></td>
+      </tr>`;
+    }).join('');
+  };
+  window.exportUsersSecurity=function(){
+    if(!canManageUsers())return;
+    const data=JSON.stringify(loadUsers().map(({password,...rest})=>rest),null,2);
+    const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='fixora_users_permissions.json'; a.click(); URL.revokeObjectURL(a.href);
+    audit('تصدير المستخدمين','تم تصدير ملف JSON بدون كلمات المرور');
+  };
+
+  // Login override: يسمح بتسجيل دخول المستخدمين المنشئين من صفحة الصلاحيات.
+  const oldLogin=window.securityLoginSubmit;
+  window.securityLoginSubmit=function(){
+    const u=clean(document.getElementById('secUser')?.value); const p=clean(document.getElementById('secPass')?.value);
+    const user=loadUsers().find(x=>x.username===u && x.password===p && x.is_active);
+    if(user){
+      const hours=document.getElementById('secRemember')?.checked?12:2;
+      const s={token:crypto.randomUUID?crypto.randomUUID():String(Date.now()),username:user.username,name:user.full_name,role:user.role,permissions:user.permissions||[],loginAt:new Date().toISOString(),expiresAt:Date.now()+hours*60*60*1000};
+      localStorage.setItem(SESSION_KEY,JSON.stringify(s)); document.body.classList.remove('secure-locked');
+      document.querySelectorAll('.user b').forEach(x=>x.textContent=user.full_name); document.querySelectorAll('.user small').forEach(x=>x.textContent='صلاحية: '+user.role);
+      const err=document.getElementById('secError'); if(err)err.classList.remove('show'); audit('تسجيل دخول','دخول مستخدم: '+user.username);
+      if(typeof renderAll==='function')renderAll(); renderUsersAdmin(); return;
+    }
+    if(typeof oldLogin==='function')return oldLogin();
+  };
+
+  const oldShow=window.showPage;
+  window.showPage=function(id,el){
+    const s=currentSession(); if(!s){document.body.classList.add('secure-locked');return;}
+    if(id==='users' && s.role!=='admin'){alert('غير مسموح لك بفتح إدارة المستخدمين'); audit('رفض فتح صفحة','users'); return;}
+    const allowed={admin:['*'],dispatcher:['dashboard','orders','assign','clients','clientTracking','notifications','reports'],technician:['techPortal','clientTracking'],viewer:['dashboard','reports','clientTracking']};
+    const pages=allowed[s.role]||[]; if(!pages.includes('*')&&!pages.includes(id)){alert('غير مسموح لك بفتح هذه الصفحة'); audit('رفض فتح صفحة',id); return;}
+    oldShow.call(this,id,el); if(id==='users')renderUsersAdmin();
+  };
+  window.addEventListener('load',function(){loadUsers(); renderUserPermissions(); renderUsersAdmin();});
 })();
 </script>
 
