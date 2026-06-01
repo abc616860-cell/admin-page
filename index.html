@@ -139,7 +139,7 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
         </div>
       </div>
       <div id="orders" class="page"><div class="section-grid"><div class="card"><div class="card-head"><h3>إضافة طلب صيانة</h3><button class="btn light" onclick="seedDemo()">بيانات تجربة</button></div><div class="mini-form"><div class="field"><label>اسم العميل</label><input id="oName"></div><div class="field"><label>رقم الجوال</label><input id="oPhone"></div><div class="field"><label>الخدمة</label><select id="oService"><option>صيانة دورية</option><option>إصلاح عطل</option><option>تركيب جهاز</option><option>تكييف</option><option>كهرباء</option><option>سباكة</option></select></div><div class="field"><label>المدينة</label><select id="oCity"><option>جدة</option><option>الرياض</option><option>الدمام</option><option>مكة</option></select></div><div class="field"><label>السعر</label><input id="oPrice" type="number"></div><div class="field"><label>الحالة</label><select id="oStatus"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option><option>متأخرة</option></select></div><div class="field" style="grid-column:1/-1"><label>العنوان / الملاحظات</label><textarea id="oNotes"></textarea></div></div><br><button class="btn" onclick="addOrder()">حفظ الطلب</button></div><div class="card"><div class="card-head"><h3>كل طلبات الصيانة</h3></div><div id="allOrders" class="list-card"></div></div></div></div>
-      <div id="technicians" class="page"><div class="section-grid"><div class="card"><h3>إضافة فني</h3><br><div class="mini-form"><div class="field"><label>اسم الفني</label><input id="tName"></div><div class="field"><label>التخصص</label><select id="tSkill"><option>تكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option></select></div><div class="field"><label>المدينة</label><input id="tCity"></div><div class="field"><label>التقييم</label><input id="tRate" type="number" value="4.8" step=".1"></div></div><br><button class="btn" onclick="addTech()">إضافة الفني</button></div><div class="card"><h3>الفنيين</h3><br><div id="techList" class="list-card"></div></div></div></div>
+      <div id="technicians" class="page"><div class="section-grid"><div class="card"><div class="card-head"><h3 id="techFormTitle">إضافة فني</h3><button class="btn light" onclick="clearTechForm()">إضافة جديد</button></div><input id="tEditId" type="hidden"><div class="mini-form"><div class="field"><label>اسم الفني</label><input id="tName" placeholder="اسم الفني"></div><div class="field"><label>التخصص</label><select id="tSkill"><option>تكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>غسالات</option><option>ثلاجات</option><option>أفران</option><option>مجففات</option><option>مكانس</option><option>جميع الأجهزة المنزلية</option></select></div><div class="field"><label>المدينة</label><input id="tCity" placeholder="المدينة"></div><div class="field"><label>رقم الجوال</label><input id="tPhone" placeholder="05xxxxxxxx"></div><div class="field"><label>التقييم</label><input id="tRate" type="number" value="4.8" step=".1"></div><div class="field"><label>الحالة</label><select id="tAvailable"><option>متاح للعمل</option><option>مشغول</option><option>إجازة</option><option>غير مفعل</option></select></div><div class="field"><label>سنوات الخبرة</label><input id="tExperience" type="number" value="5"></div><div class="field"><label>User ID للفني</label><input id="tUserId" placeholder="auth.users id اختياري"></div><div class="field" style="grid-column:1/-1"><label>ملاحظات / نوع العقد</label><input id="tContract" placeholder="بالطلب / دوام كامل / ملاحظات"></div></div><br><button class="btn" id="techSaveBtn" onclick="addTech()">حفظ الفني</button><button class="btn light" onclick="clearTechForm()">تفريغ</button></div><div class="card"><div class="card-head"><h3>الفنيين</h3><span class="status paid" id="techCountBadge">0 فني</span></div><div id="techList" class="list-card"></div></div></div></div>
 
       <div id="techProfile" class="page">
         <div class="profile-layout-v6">
@@ -217,7 +217,7 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
           </div>
         </div>
       </div>
-      <div id="settings" class="page"><div class="section-grid"><div class="card"><h3>إعدادات النظام</h3><br><div class="pro-panel"><div class="pro-tile"><h4>هوية النظام</h4><p>Fixora Pro — لوحة تحكم صيانة منزلية وخدمات.</p></div><div class="pro-tile"><h4>حفظ البيانات</h4><p>النسخة الحالية مربوطة بـ Supabase عند إضافة بيانات المشروع، مع احتياطي LocalStorage.</p></div><div class="pro-tile"><h4>التصميم</h4><p>ستايل Dashboard احترافي مطابق للصورة: أزرق، أبيض، كروت، جداول، وتنبيهات.</p></div></div><br><button class="btn red" onclick="secureClearDemo()">مسح بيانات التجربة</button></div><div class="card"><h3>شكل الفاتورة</h3><br><div class="invoice-preview"><div class="inv-head"><h2>FIXORA PRO</h2><b>INV-2026-001</b></div><div class="inv-body"><p><b>عميل:</b> شركة الريان</p><p><b>الخدمة:</b> صيانة دورية</p><p><b>الحالة:</b> <span class="status paid">مدفوعة</span></p><div class="inv-total"><span>الإجمالي النهائي</span><span>15,750.00 ج.م</span></div></div></div></div></div></div>
+      <div id="settings" class="page"><div class="section-grid"><div class="card"><h3>إعدادات النظام</h3><br><div class="pro-panel"><div class="pro-tile"><h4>هوية النظام</h4><p>Fixora Pro — لوحة تحكم صيانة منزلية وخدمات.</p></div><div class="pro-tile"><h4>حفظ البيانات</h4><p>النسخة الحالية مربوطة بـ Supabase عند إضافة بيانات المشروع، مع احتياطي LocalStorage.</p></div><div class="pro-tile"><h4>التصميم</h4><p>ستايل Dashboard احترافي مطابق للصورة: أزرق، أبيض، كروت، جداول، وتنبيهات.</p></div></div><br><button class="btn red" onclick="secureClearDemo()">مسح بيانات التجربة</button></div><div class="card"><h3>شكل الفاتورة</h3><br><div class="invoice-preview"><div class="inv-head"><h2>FIXORA</h2><b>#INV-2026-001</b></div><div class="inv-body"><p>عميل: شركة الريان</p><p>الخدمة: صيانة دورية</p><div class="inv-total"><span>الإجمالي</span><span>15,750.00 ج.م</span></div></div></div></div></div></div>
       <div id="reports" class="page"><div class="card"><h3>التقارير</h3><div class="kpis" style="margin-top:18px"><div class="kpi"><div><h4>نسبة الإنجاز</h4><strong>87%</strong><p><em>+9%</em> تحسن</p></div><div class="kicon ki-green">✅</div></div><div class="kpi"><div><h4>متوسط الطلب</h4><strong>1,280</strong><p>ج.م للطلب</p></div><div class="kicon ki-blue">📌</div></div><div class="kpi"><div><h4>طلبات متأخرة</h4><strong>4</strong><p>تحتاج متابعة</p></div><div class="kicon ki-orange">⏱</div></div><div class="kpi"><div><h4>فنيين نشطين</h4><strong id="rTech">8</strong><p>جاهزين للعمل</p></div><div class="kicon ki-purple">👷</div></div></div></div></div>
       <div id="auditLog" class="page"><div class="card"><div class="card-head"><h3>سجل الأمان والحركات</h3><button class="btn light" onclick="renderAuditLog()">تحديث</button></div><div class="secure-lock-note">يسجل النظام عمليات الدخول، إضافة الطلبات، إضافة الفنيين، تغيير الحالة، الحذف، الطباعة، ومسح البيانات.</div><div class="table-wrap"><table class="audit-table"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الصلاحية</th><th>العملية</th><th>التفاصيل</th></tr></thead><tbody id="auditRows"></tbody></table></div></div></div>
     </section>
@@ -1754,56 +1754,279 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 
 
 
-<!-- V17: Professional Invoice Upgrade - Design unchanged -->
-<style>
-.invoice-toolbar-v17{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}.invoice-toolbar-v17 .left{display:flex;gap:10px;flex-wrap:wrap}.invoice-search-v17{height:42px;border:1px solid var(--line);border-radius:13px;background:#f8fbff;padding:0 12px;min-width:260px}.invoice-summary-v17{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}.invoice-stat-v17{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbff);padding:14px}.invoice-stat-v17 small{color:var(--muted);font-weight:900}.invoice-stat-v17 b{display:block;font-size:22px;margin-top:6px}.invoice-mini-actions-v17{display:flex;gap:7px;flex-wrap:wrap}.invoice-chip-v17{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 11px;font-weight:900;font-size:12px;border:1px solid #dbe7f5;background:#f8fbff;color:#10213d}.invoice-chip-v17.paid{background:#ecfdf5;color:#047857;border-color:#bbf7d0}.invoice-chip-v17.unpaid{background:#fff7ed;color:#c2410c;border-color:#fed7aa}.invoice-chip-v17.late{background:#fff1f2;color:#be123c;border-color:#fecdd3}.invoice-paper-v17{width:210mm;min-height:297mm;background:#fff;margin:0 auto;color:#0f172a;font-family:Tajawal,Arial,sans-serif;box-shadow:0 32px 90px rgba(2,8,23,.18);overflow:hidden;position:relative}.invoice-paper-v17:before{content:"";position:absolute;top:0;right:0;left:0;height:9px;background:linear-gradient(90deg,#176df7,#2fc987,#22d3ee)}.inv17-header{background:linear-gradient(135deg,#071b34 0%,#0b3568 58%,#176df7 100%);color:#fff;padding:32px 36px 30px;display:grid;grid-template-columns:1fr auto;gap:22px;align-items:start;position:relative;overflow:hidden}.inv17-header:after{content:"";position:absolute;left:-90px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08)}.inv17-brand{display:flex;gap:15px;align-items:center;position:relative;z-index:1}.inv17-logo{width:70px;height:70px;border-radius:24px;background:linear-gradient(135deg,#fff,#dbeafe);color:#176df7;display:grid;place-items:center;font-size:34px;box-shadow:0 18px 40px rgba(0,0,0,.22)}.inv17-brand h1{font-size:31px;margin:0;font-weight:900;letter-spacing:.4px}.inv17-brand p{margin-top:5px;color:#dbeafe;font-weight:800}.inv17-meta{text-align:left;position:relative;z-index:1}.inv17-meta .tag{display:inline-flex;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);border-radius:999px;padding:8px 13px;font-weight:900;margin-bottom:9px}.inv17-meta b{display:block;font-size:24px}.inv17-meta small{display:block;color:#dbeafe;margin-top:6px;font-weight:800}.inv17-body{padding:28px 36px}.inv17-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}.inv17-box{border:1px solid #e2eaf5;background:#f8fbff;border-radius:20px;padding:17px}.inv17-box h3{font-size:15px;color:#176df7;margin-bottom:12px}.inv17-line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed #d7e2ef}.inv17-line:last-child{border-bottom:0}.inv17-line span{color:#64748b;font-weight:900}.inv17-line b{text-align:left}.inv17-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #e2eaf5;border-radius:20px;overflow:hidden}.inv17-table th{background:#071b34;color:#fff;text-align:right;padding:14px;font-size:14px}.inv17-table td{padding:14px;border-bottom:1px solid #edf3fa;background:#fff;vertical-align:top}.inv17-table tr:last-child td{border-bottom:0}.inv17-table th:last-child,.inv17-table td:last-child{text-align:left;font-weight:900}.inv17-summary{display:grid;grid-template-columns:1fr 310px;gap:18px;margin-top:18px}.inv17-note{border:1px solid #e2eaf5;background:#f8fbff;border-radius:20px;padding:16px;line-height:1.8;color:#475569}.inv17-total{background:#071b34;color:#fff;border-radius:22px;padding:18px}.inv17-total .row{display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.14);padding:9px 0}.inv17-total .row:last-child{border-bottom:0}.inv17-total small{color:#cbd5e1;font-weight:900}.inv17-total b{font-size:25px}.inv17-total .grand{font-size:29px}.inv17-photos{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:18px}.inv17-photo-box{border:1px dashed #cbd5e1;background:#fbfdff;border-radius:20px;padding:14px}.inv17-photo-box h4{margin-bottom:10px}.inv17-photo-list{display:flex;gap:8px;flex-wrap:wrap}.inv17-photo-list img{width:118px;height:82px;object-fit:cover;border-radius:13px;border:1px solid #e2eaf5}.inv17-no-photo{color:#64748b;font-weight:800;background:#f1f5f9;border-radius:13px;padding:12px;text-align:center}.inv17-footer{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-top:22px}.inv17-sign{height:88px;border:1px dashed #cbd5e1;border-radius:18px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:13px;color:#64748b;font-weight:900}.inv17-actions{position:fixed;left:22px;bottom:22px;display:flex;gap:8px;z-index:99999}.inv17-actions button{border:0;border-radius:14px;padding:12px 16px;font-weight:900;background:#176df7;color:#fff;box-shadow:0 15px 35px rgba(23,109,247,.25)}.inv17-actions button.light{background:#fff;color:#176df7;border:1px solid #dbe7f5}.mini-btn.invoice-view-v17{background:#eef5ff;color:#176df7}.mini-btn.invoice-print-v17{background:#176df7;color:#fff}.mini-btn.invoice-paid-v17{background:#e7fbf1;color:#17ae72}@media(max-width:900px){.invoice-summary-v17,.inv17-header,.inv17-grid,.inv17-summary,.inv17-photos,.inv17-footer{grid-template-columns:1fr}.invoice-paper-v17{width:100%;min-height:auto}.inv17-meta{text-align:right}.inv17-body{padding:20px}.inv17-actions{position:sticky;bottom:10px;margin:10px}}@media print{body>*:not(#printArea){display:none!important}#printArea{display:block!important;background:#fff!important}.invoice-paper-v17{width:100%!important;min-height:auto!important;box-shadow:none!important}.inv17-actions{display:none!important}.inv17-header,.inv17-table th,.inv17-total{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:8mm}}
-</style>
+<!-- FIXORA TECHNICIAN ASSIGNED ONLY PATCH - 2026-06-01 -->
 <script>
 (function(){
-  'use strict';
-  const ORD_KEY=window.ORD||'fixora_exact_orders_v1', TECH_KEY=window.TECH||'fixora_exact_techs_v1';
-  function loadSafe(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
-  function saveSafe(k,v){try{localStorage.setItem(k,JSON.stringify(v)); if(typeof window.save==='function') window.save(k,v);}catch(e){}}
-  function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-  function money(n){try{return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}catch(e){return '0.00'}}
-  function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0}
-  function payText(x){const p=String(x.paymentStatus||''); if(p) return p; const s=String(x.status||''); if(s.includes('مكتملة')) return 'مدفوعة'; if(s.includes('متأخرة')) return 'متأخرة'; return 'غير مدفوعة'}
-  function payClass(x){const p=payText(x); if(p.includes('مدفوعة')||p.includes('مدفوع')) return 'paid'; if(p.includes('متأخرة')||p.includes('متأخر')) return 'late'; return 'unpaid'}
-  function invoiceNo(x){return 'INV-'+String(x.id||Date.now()).replace(/[^0-9A-Za-z-]/g,'').padStart(6,'0')}
-  function orderById(id){const orders=loadSafe(ORD_KEY); return orders.find(o=>String(o.id)===String(id))||orders[0]||null}
-  function techName(x){const techs=loadSafe(TECH_KEY); const t=techs.find(t=>String(t.id)===String(x.techId)); return t?.name || x.techName || 'لم يتم الإسناد'}
-  function photos(list){return (Array.isArray(list)?list:[]).slice(0,4).map(src=>`<img src="${esc(src)}" alt="photo">`).join('') || '<div class="inv17-no-photo">لا توجد صور</div>'}
-  function setHtml(el,html){if(!el)return; el.innerHTML=window.DOMPurify?DOMPurify.sanitize(html,{ADD_ATTR:['onclick','style'],ALLOWED_URI_REGEXP:/^(?:(?:https?|mailto|tel|data:image\/(?:png|jpeg|webp);base64):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i}):html}
-  function ensurePrintArea(){let p=document.getElementById('printArea'); if(!p){p=document.createElement('div');p.id='printArea';p.style.display='none';document.body.appendChild(p)} return p}
-  function invoiceHTML(x){
-    const total=num(x.price), tax=Math.round((x.tax!==undefined?num(x.tax):total*0.15)*100)/100, discount=num(x.discount||0), subtotal=Math.max(0,total-tax+discount);
-    const date=x.date||new Date().toISOString().slice(0,10);
-    return `<div class="inv17-actions"><button onclick="window.print()">طباعة</button><button class="light" onclick="document.getElementById('printArea').style.display='none'">إغلاق</button></div>
-    <article class="invoice-paper-v17" dir="rtl">
-      <header class="inv17-header"><div class="inv17-brand"><div class="inv17-logo">🔧</div><div><h1>FIXORA PRO</h1><p>فاتورة صيانة وخدمات منزلية</p></div></div><div class="inv17-meta"><span class="tag">فاتورة رسمية</span><b>${esc(invoiceNo(x))}</b><small>تاريخ الإصدار: ${esc(date)}</small><small>رقم الطلب: ${esc(x.id||'-')}</small></div></header>
-      <main class="inv17-body">
-        <section class="inv17-grid"><div class="inv17-box"><h3>بيانات العميل</h3><div class="inv17-line"><span>اسم العميل</span><b>${esc(x.name||'-')}</b></div><div class="inv17-line"><span>رقم الجوال</span><b>${esc(x.phone||'-')}</b></div><div class="inv17-line"><span>المدينة</span><b>${esc(x.city||'-')}</b></div><div class="inv17-line"><span>العنوان</span><b>${esc(x.address||x.notes||'-')}</b></div></div><div class="inv17-box"><h3>بيانات الخدمة</h3><div class="inv17-line"><span>الخدمة</span><b>${esc(x.service||'-')}</b></div><div class="inv17-line"><span>الفني</span><b>${esc(techName(x))}</b></div><div class="inv17-line"><span>حالة الطلب</span><b>${esc(x.status||'-')}</b></div><div class="inv17-line"><span>حالة الدفع</span><b><span class="invoice-chip-v17 ${payClass(x)}">${esc(payText(x))}</span></b></div></div></section>
-        <table class="inv17-table"><thead><tr><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody><tr><td><b>${esc(x.service||'خدمة صيانة')}</b><br><small style="color:#64748b">${esc(x.notes||'تنفيذ خدمة الصيانة حسب بيانات الطلب.')}</small></td><td>1</td><td>${money(subtotal)} ج.م</td><td>${money(subtotal)} ج.م</td></tr><tr><td>ضريبة / رسوم خدمة</td><td>1</td><td>${money(tax)} ج.م</td><td>${money(tax)} ج.م</td></tr>${discount?`<tr><td>خصم</td><td>1</td><td>-${money(discount)} ج.م</td><td>-${money(discount)} ج.م</td></tr>`:''}</tbody></table>
-        <section class="inv17-summary"><div class="inv17-note"><b>ملاحظات الفاتورة</b><br>تم إنشاء هذه الفاتورة من نظام Fixora Pro. يرجى مراجعة بيانات العميل والخدمة قبل الطباعة النهائية. الفاتورة جاهزة للطباعة A4 بشكل احترافي.</div><div class="inv17-total"><div class="row"><small>المبلغ قبل الضريبة</small><span>${money(subtotal)} ج.م</span></div><div class="row"><small>الضريبة / الرسوم</small><span>${money(tax)} ج.م</span></div><div class="row"><small>الخصم</small><span>${money(discount)} ج.م</span></div><div class="row"><small>الإجمالي النهائي</small><b class="grand">${money(total)} ج.م</b></div></div></section>
-        <section class="inv17-photos"><div class="inv17-photo-box"><h4>صور قبل الصيانة</h4><div class="inv17-photo-list">${photos(x.beforePhotos)}</div></div><div class="inv17-photo-box"><h4>صور بعد الصيانة</h4><div class="inv17-photo-list">${photos(x.afterPhotos)}</div></div></section>
-        <footer class="inv17-footer"><div class="inv17-sign">توقيع العميل</div><div class="inv17-sign">توقيع الفني</div><div class="inv17-sign">ختم / توقيع الإدارة</div></footer>
-      </main>
-    </article>`;
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
+  function isTech(){const s=session(); return s && String(s.role||'').toLowerCase()==='technician';}
+  function isAdminRole(){const s=session(); return s && ['admin','super_admin','dispatcher'].includes(String(s.role||'').toLowerCase());}
+  function esc(v){return String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));}
+  function currentTech(){
+    const s=session(); const techs=load(TECH)||[];
+    if(!s) return null;
+    return techs.find(t=>String(t.user_id||t.userId||'')===String(s.user_id||''))
+        || techs.find(t=>String(t.email||'').toLowerCase()===String(s.email||'').toLowerCase())
+        || null;
   }
-  window.previewInvoice=function(id){const x=orderById(id); if(!x){alert('لا توجد فاتورة');return;} const p=ensurePrintArea(); setHtml(p,invoiceHTML(x)); p.style.display='block';}
-  window.printInvoice=function(id){window.previewInvoice(id); setTimeout(()=>window.print(),120)}
-  window.markInvoicePaid=function(id){const orders=loadSafe(ORD_KEY); const idx=orders.findIndex(o=>String(o.id)===String(id)); if(idx<0)return; orders[idx].paymentStatus='مدفوعة'; if(orders[idx].status==='متأخرة') orders[idx].status='مكتملة'; saveSafe(ORD_KEY,orders); if(typeof window.renderAll==='function') window.renderAll(); else if(typeof window.renderInvoices==='function') window.renderInvoices();}
-  window.renderInvoices=function(){
-    const orders=loadSafe(ORD_KEY); const total=orders.reduce((s,o)=>s+num(o.price),0), paid=orders.filter(o=>payClass(o)==='paid').reduce((s,o)=>s+num(o.price),0), unpaid=total-paid, count=orders.length;
-    const header=`<div class="invoice-toolbar-v17"><div><h3>الفواتير والمدفوعات</h3><p style="color:var(--muted);font-weight:800;margin-top:4px">إدارة وطباعة فواتير الصيانة باحتراف</p></div><div class="left"><input class="invoice-search-v17" id="invoiceSearchV17" placeholder="بحث باسم العميل أو رقم الطلب" oninput="renderInvoices()"><button class="btn light" onclick="window.print()">طباعة الصفحة</button></div></div><div class="invoice-summary-v17"><div class="invoice-stat-v17"><small>عدد الفواتير</small><b>${count}</b></div><div class="invoice-stat-v17"><small>إجمالي الفواتير</small><b>${money(total)} ج.م</b></div><div class="invoice-stat-v17"><small>المدفوع</small><b>${money(paid)} ج.م</b></div><div class="invoice-stat-v17"><small>المتبقي</small><b>${money(unpaid)} ج.م</b></div></div>`;
-    const paymentsPage=document.querySelector('#payments .card'); if(paymentsPage && !paymentsPage.dataset.v17){paymentsPage.dataset.v17='1'; paymentsPage.innerHTML=header+`<div class="table-wrap"><table class="table"><thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>الخدمة</th><th>المبلغ</th><th>الدفع</th><th>إجراءات</th></tr></thead><tbody id="invoiceRows2"></tbody></table></div>`;}
-    const q=String(document.getElementById('invoiceSearchV17')?.value||'').toLowerCase().trim(); const filtered=orders.filter(x=>!q || JSON.stringify(x).toLowerCase().includes(q));
-    const rows=filtered.map(x=>`<tr><td><b>${esc(invoiceNo(x))}</b><br><small>${esc(x.id||'-')}</small></td><td>${esc(x.name||'-')}<br><small>${esc(x.phone||'-')}</small></td><td>${esc(x.date||new Date().toISOString().slice(0,10))}</td><td>${esc(x.service||'-')}</td><td><b>${money(num(x.price))} ج.م</b></td><td><span class="invoice-chip-v17 ${payClass(x)}">${esc(payText(x))}</span></td><td><div class="invoice-mini-actions-v17"><button class="mini-btn invoice-view-v17" onclick="previewInvoice('${esc(x.id)}')">معاينة</button><button class="mini-btn invoice-print-v17" onclick="printInvoice('${esc(x.id)}')">طباعة</button><button class="mini-btn invoice-paid-v17" onclick="markInvoicePaid('${esc(x.id)}')">مدفوعة</button></div></td></tr>`).join('') || '<tr><td colspan="7">لا توجد فواتير</td></tr>';
-    setHtml(document.getElementById('invoiceRows2'),rows);
-    const dashRows=orders.slice(0,5).map(x=>`<tr><td>${esc(invoiceNo(x))}</td><td>${esc(x.name||'-')}</td><td>${esc(x.date||new Date().toISOString().slice(0,10))}</td><td>${money(num(x.price))} ج.م</td><td><span class="invoice-chip-v17 ${payClass(x)}">${esc(payText(x))}</span></td></tr>`).join('');
-    setHtml(document.getElementById('invoiceRows'),dashRows);
+  function orderTechId(o){return String(o?.assigned_technician_id || o?.techId || o?.tech_id || '');}
+  function ownOrdersOnly(list){
+    if(!isTech()) return list||[];
+    const t=currentTech();
+    if(t) return (list||[]).filter(o=>orderTechId(o)===String(t.id));
+    // لو Supabase RLS رجّع الطلبات الخاصة بالفني فقط، اعرضها حتى لو لم يتم تحميل سجل الفني.
+    return list||[];
+  }
+
+  // توحيد أسماء الأعمدة بين الواجهة و Supabase: techId في الواجهة = assigned_technician_id في قاعدة البيانات.
+  window.normalizeOrderForDb=function(x){return {
+    id:String(x.id||('#'+Date.now())),
+    name:x.name||'', phone:x.phone||'', service:x.service||'', city:x.city||'', address:x.address||'', notes:x.notes||'',
+    price:Number(x.price||0), status:x.status||'جديدة', date:x.date||new Date().toISOString().slice(0,10), time:x.time||'',
+    assigned_technician_id:x.assigned_technician_id||x.techId||x.tech_id||null,
+    tech_id:x.assigned_technician_id||x.techId||x.tech_id||null,
+    payment_status:x.paymentStatus||null, rating:x.rating||null, rating_note:x.ratingNote||null,
+    before_photos:x.beforePhotos||[], after_photos:x.afterPhotos||[], raw:x, updated_at:new Date().toISOString()
+  }};
+  window.dbOrderToLocal=function(r){let x=r.raw||{}; return {...x,
+    id:r.id, name:r.name, phone:r.phone, service:r.service, city:r.city, address:r.address, notes:r.notes,
+    price:Number(r.price||0), status:r.status, date:r.date, time:r.time,
+    assigned_technician_id:r.assigned_technician_id||r.tech_id||x.assigned_technician_id||x.techId||null,
+    techId:r.assigned_technician_id||r.tech_id||x.techId||null,
+    paymentStatus:r.payment_status, rating:r.rating, ratingNote:r.rating_note,
+    beforePhotos:r.before_photos||[], afterPhotos:r.after_photos||[]
+  }};
+  window.normalizeTechForDb=function(x){return {
+    id:String(x.id||('TECH-'+Date.now())), name:x.name||'', skill:x.skill||'', city:x.city||'', rate:Number(x.rate||0),
+    available:x.available||'متاح للعمل', experience:Number(x.experience||0), contract:x.contract||'',
+    user_id:x.user_id||x.userId||null, email:x.email||'', raw:x, updated_at:new Date().toISOString()
+  }};
+  window.dbTechToLocal=function(r){let x=r.raw||{}; return {...x,
+    id:r.id, name:r.name, skill:r.skill, city:r.city, rate:r.rate, available:r.available,
+    experience:r.experience, contract:r.contract, user_id:r.user_id||x.user_id||x.userId||null, email:r.email||x.email||''
+  }};
+
+  window.pullOrdersFromSupabase=async function(){
+    if(!window.sb)return;
+    try{
+      window.__pullingFixora=true;
+      const {data,error}=await window.sb.from('orders').select('*').order('created_at',{ascending:false});
+      if(error) throw error;
+      if(data){localStorage.setItem(ORD,JSON.stringify((data||[]).map(window.dbOrderToLocal))); if(typeof renderAll==='function')renderAll();}
+    }catch(e){console.warn('Supabase orders pull failed',e.message||e)}
+    finally{window.__pullingFixora=false;}
   };
-  window.addEventListener('load',()=>setTimeout(()=>{try{window.renderInvoices()}catch(e){console.warn(e)}},800));
+  window.pullTechsFromSupabase=async function(){
+    if(!window.sb)return;
+    try{
+      window.__pullingFixora=true;
+      const {data,error}=await window.sb.from('technicians').select('*').order('created_at',{ascending:false});
+      if(error) throw error;
+      if(data&&data.length){localStorage.setItem(TECH,JSON.stringify(data.map(window.dbTechToLocal))); if(typeof renderAll==='function')renderAll();}
+    }catch(e){console.warn('Supabase tech pull failed',e.message||e)}
+    finally{window.__pullingFixora=false;}
+  };
+
+  // تسجيل الدخول: يسمح للفني بالدخول لبوابة الفني فقط، بدون فتح لوحة الأدمن كاملة.
+  window.securityLoginSubmit=async function(){
+    const email=String(document.getElementById('secUser')?.value||'').trim().toLowerCase();
+    const password=String(document.getElementById('secPass')?.value||'');
+    const err=document.getElementById('secError');
+    function showErr(msg){if(err){err.textContent=msg;err.classList.add('show')}}
+    if(!email||!password){showErr('اكتب الإيميل وكلمة المرور');return;}
+    if(!window.sb){showErr('ضع SUPABASE_URL و SUPABASE_ANON_KEY الصحيحين داخل الملف أولًا');return;}
+    try{
+      const {data,error}=await window.sb.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      const {data:profile,error:perr}=await window.sb.from('user_profiles').select('id,full_name,email,role,is_active,active').eq('id',data.user.id).maybeSingle();
+      if(perr) throw perr;
+      if(!profile) throw new Error('المستخدم موجود في Authentication لكنه غير مضاف في جدول user_profiles');
+      if(profile.is_active===false || profile.active===false) throw new Error('هذا المستخدم غير مفعل');
+      const role=String(profile.role||'viewer').toLowerCase();
+      const remember=document.getElementById('secRemember')?.checked;
+      localStorage.setItem(SESSION_KEY,JSON.stringify({
+        token:data.user.id,user_id:data.user.id,email:data.user.email||profile.email||'',username:data.user.email||profile.email||'',
+        name:profile.full_name||data.user.email||'مستخدم',role,is_active:true,source:'supabase_auth',
+        loginAt:new Date().toISOString(),expiresAt:Date.now()+(remember?12:2)*60*60*1000
+      }));
+      err?.classList.remove('show');
+      document.body.classList.remove('secure-locked');
+      await window.pullTechsFromSupabase?.();
+      await window.pullOrdersFromSupabase?.();
+      if(typeof window.applyRolePermissions==='function')window.applyRolePermissions();
+      if(role==='technician') window.showPage('techPortal'); else window.showPage('dashboard');
+    }catch(e){showErr(e.message||'فشل تسجيل الدخول');}
+  };
+
+  const oldApply=window.applyRolePermissions;
+  window.applyRolePermissions=function(){
+    oldApply?.();
+    if(isTech()){
+      document.querySelectorAll('.nav button').forEach(btn=>{
+        const on=btn.getAttribute('onclick')||'';
+        const allowed=on.includes("techPortal") || on.includes("clientTracking");
+        btn.style.display=allowed?'flex':'none';
+      });
+      const sel=document.getElementById('portalTechV8');
+      if(sel){sel.disabled=true; sel.title='الفني يرى طلباته المسندة له فقط';}
+    }
+  };
+
+  window.renderTechPortalV8=function(){
+    const sel=document.getElementById('portalTechV8'); if(!sel)return;
+    const techs=load(TECH)||[]; const s=session(); let tech=currentTech();
+    if(isTech()){
+      sel.innerHTML=tech?`<option value="${esc(tech.id)}">${esc(tech.name)} - ${esc(tech.skill||'-')} - ${esc(tech.city||'-')}</option>`:`<option value="">حساب فني</option>`;
+      sel.disabled=true; if(tech) sel.value=tech.id;
+    }else{
+      sel.disabled=false;
+      const current=sel.value;
+      sel.innerHTML=techs.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} - ${esc(t.skill||'-')} - ${esc(t.city||'-')}</option>`).join('');
+      if(current) sel.value=current;
+      tech=techs.find(t=>String(t.id)===String(sel.value))||techs[0]; if(tech)sel.value=tech.id;
+    }
+    let all=load(ORD)||[]; let orders=isTech()?ownOrdersOnly(all):all.filter(o=>tech&&orderTechId(o)===String(tech.id));
+    if(isTech() && !tech && !orders.length){
+      portalTechSummaryV8.innerHTML='<div class="empty-v8">حسابك غير مربوط بملف فني. اربط user_id في جدول technicians بنفس User ID.</div>';
+      portalOrdersV8.innerHTML=''; return;
+    }
+    const titleTech=tech||{name:s?.name||'فني',skill:'-',city:'-',rate:'-'};
+    const done=orders.filter(o=>o.status==='مكتملة').length;
+    const income=orders.reduce((a,o)=>a+Number(o.price||0),0);
+    portalTechSummaryV8.innerHTML=`<div class="profile-card" style="margin:0"><div class="avatar">👨‍🔧</div><div><h3>${esc(titleTech.name)}</h3><p>${esc(titleTech.skill||'-')} · ${esc(titleTech.city||'-')} · ★ ${esc(titleTech.rate||4.8)}</p></div></div><div class="summary-chip-v8">طلبات مسندة<b>${orders.length}</b></div><div class="summary-chip-v8">طلبات مكتملة<b>${done}</b></div><div class="summary-chip-v8">إيرادات مرتبطة<b>${fmt(income)} ج.م</b></div>`;
+    const stages=window.V8_STAGES||['جديدة','استلم الفني','تحرك الفني','جاري الإصلاح','مكتملة'];
+    portalOrdersV8.innerHTML=orders.map(o=>`<div class="portal-order-v8"><div><h3>${esc(o.id)} - ${esc(o.service||'-')}</h3><p class="muted-v8">${esc(o.name||'-')} · ${esc(o.phone||'-')} · ${esc(o.city||'-')} · ${fmt(Number(o.price||0))} ج.م</p><span class="status ${o.status==='مكتملة'?'paid':o.status==='متأخرة'?'delayed':'unpaid'}">${esc(o.status)}</span></div><div class="stage-actions-v8">${stages.map(st=>`<button class="stage-btn-v8 ${o.status===st?'active':''}" onclick="setOrderStageV8('${esc(o.id)}','${esc(st)}')">${esc(st)}</button>`).join('')}</div></div>`).join('')||'<div class="empty-v8">لا توجد طلبات مسندة لهذا الفني</div>';
+  };
+
+  window.setOrderStageV8=async function(idv,stage){
+    let orders=load(ORD)||[]; const o=orders.find(i=>String(i.id)===String(idv));
+    if(!o) return;
+    if(isTech()){
+      const t=currentTech();
+      if(t && orderTechId(o)!==String(t.id)){alert('غير مسموح بتعديل طلب غير مسند لك');return;}
+    }
+    o.status=stage; o.updated_at=new Date().toISOString();
+    localStorage.setItem(ORD,JSON.stringify(orders));
+    try{ if(window.sb) await window.sb.from('orders').update({status:stage,updated_at:new Date().toISOString()}).eq('id',idv); }catch(e){console.warn('status update failed',e.message||e)}
+    renderAll?.(); renderTechPortalV8(); renderClientTrackingV8?.(); toastMsg?.('تم تحديث حالة الطلب');
+  };
+
+  // عند تحميل الصفحة: الفني يدخل مباشرة على بوابته، والأدمن يبقى على نفس التصميم الكامل.
+  window.addEventListener('load',()=>setTimeout(()=>{try{window.applyRolePermissions?.(); if(isTech()) window.showPage('techPortal'); renderTechPortalV8();}catch(e){}},600));
+})();
+</script>
+
+
+<script>
+/* Technician CRUD patch - add/edit/delete without changing dashboard design */
+(function(){
+  const TECH_KEY = window.TECH || 'fixora_exact_techs_v1';
+  function clean(v){return String(v ?? '').trim()}
+  function esc(v){return String(v ?? '').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
+  function getTechs(){try{return JSON.parse(localStorage.getItem(TECH_KEY)||'[]')}catch(e){return[]}}
+  function setTechs(v){localStorage.setItem(TECH_KEY,JSON.stringify(v||[]))}
+  function canManage(){
+    if(typeof window.requireAdmin==='function') return window.requireAdmin('إدارة الفنيين');
+    return true;
+  }
+  function input(id){return document.getElementById(id)}
+  function techFromForm(existing){
+    const base = existing || {};
+    return {
+      ...base,
+      id: clean(input('tEditId')?.value) || base.id || ('TECH-'+Date.now().toString().slice(-6)),
+      name: clean(input('tName')?.value) || 'فني جديد',
+      skill: clean(input('tSkill')?.value) || '-',
+      city: clean(input('tCity')?.value) || 'جدة',
+      phone: clean(input('tPhone')?.value),
+      rate: Number(input('tRate')?.value || 4.8),
+      available: clean(input('tAvailable')?.value) || 'متاح للعمل',
+      experience: Number(input('tExperience')?.value || 0),
+      user_id: clean(input('tUserId')?.value) || base.user_id || '',
+      contract: clean(input('tContract')?.value) || base.contract || 'بالطلب',
+      updated_at: new Date().toISOString()
+    };
+  }
+  async function upsertTechSupabase(t){
+    if(!window.sb) return;
+    try{
+      const row={id:String(t.id),name:t.name||'',skill:t.skill||'',city:t.city||'',rate:Number(t.rate||0),available:t.available||'',experience:Number(t.experience||0),contract:t.contract||'',user_id:t.user_id||null,raw:t,updated_at:new Date().toISOString()};
+      const {error}=await window.sb.from('technicians').upsert(row,{onConflict:'id'});
+      if(error) throw error;
+    }catch(e){console.warn('Supabase technician save failed',e.message||e)}
+  }
+  async function deleteTechSupabase(id){
+    if(!window.sb) return;
+    try{const {error}=await window.sb.from('technicians').delete().eq('id',id); if(error) throw error;}catch(e){console.warn('Supabase technician delete failed',e.message||e)}
+  }
+  window.clearTechForm=function(){
+    ['tEditId','tName','tCity','tPhone','tUserId','tContract'].forEach(id=>{const el=input(id); if(el) el.value='';});
+    if(input('tSkill')) input('tSkill').value='تكييف';
+    if(input('tRate')) input('tRate').value='4.8';
+    if(input('tAvailable')) input('tAvailable').value='متاح للعمل';
+    if(input('tExperience')) input('tExperience').value='5';
+    if(input('techFormTitle')) input('techFormTitle').textContent='إضافة فني';
+    if(input('techSaveBtn')) input('techSaveBtn').textContent='حفظ الفني';
+  };
+  window.addTech=async function(){
+    if(!canManage()) return;
+    const techs=getTechs();
+    const editId=clean(input('tEditId')?.value);
+    const idx=editId?techs.findIndex(t=>String(t.id)===String(editId)):-1;
+    const t=techFromForm(idx>-1?techs[idx]:null);
+    if(idx>-1) techs[idx]=t; else techs.push(t);
+    setTechs(techs);
+    await upsertTechSupabase(t);
+    window.clearTechForm();
+    if(typeof window.renderAll==='function') window.renderAll();
+    if(typeof window.renderTechProfile==='function') window.renderTechProfile();
+    if(typeof window.renderTechPortalV8==='function') window.renderTechPortalV8();
+    if(typeof window.toastMsg==='function') window.toastMsg(idx>-1?'تم تعديل بيانات الفني':'تم إضافة الفني'); else alert(idx>-1?'تم تعديل بيانات الفني':'تم إضافة الفني');
+  };
+  window.editTech=function(id){
+    if(!canManage()) return;
+    const t=getTechs().find(x=>String(x.id)===String(id)); if(!t) return;
+    if(input('tEditId')) input('tEditId').value=t.id||'';
+    if(input('tName')) input('tName').value=t.name||'';
+    if(input('tSkill')) input('tSkill').value=t.skill||'تكييف';
+    if(input('tCity')) input('tCity').value=t.city||'';
+    if(input('tPhone')) input('tPhone').value=t.phone||'';
+    if(input('tRate')) input('tRate').value=t.rate||4.8;
+    if(input('tAvailable')) input('tAvailable').value=t.available||'متاح للعمل';
+    if(input('tExperience')) input('tExperience').value=t.experience||0;
+    if(input('tUserId')) input('tUserId').value=t.user_id||t.userId||'';
+    if(input('tContract')) input('tContract').value=t.contract||'';
+    if(input('techFormTitle')) input('techFormTitle').textContent='تعديل بيانات الفني';
+    if(input('techSaveBtn')) input('techSaveBtn').textContent='حفظ التعديل';
+    window.showPage?.('technicians');
+    input('tName')?.focus();
+  };
+  window.deleteTech=async function(id){
+    if(!canManage()) return;
+    const techs=getTechs();
+    const t=techs.find(x=>String(x.id)===String(id)); if(!t) return;
+    const linked=(JSON.parse(localStorage.getItem(window.ORD||'fixora_exact_orders_v1')||'[]')).filter(o=>String(o.techId||o.tech_id||o.assigned_technician_id||'')===String(id)).length;
+    const msg=linked?`الفني ${t.name} عليه ${linked} طلب مسند. سيتم حذف الفني فقط ولن يتم حذف الطلبات. هل تكمل؟`:`هل تريد حذف الفني ${t.name}؟`;
+    if(!confirm(msg)) return;
+    setTechs(techs.filter(x=>String(x.id)!==String(id)));
+    await deleteTechSupabase(id);
+    window.clearTechForm();
+    if(typeof window.renderAll==='function') window.renderAll();
+    if(typeof window.renderTechProfile==='function') window.renderTechProfile();
+    if(typeof window.renderTechPortalV8==='function') window.renderTechPortalV8();
+    if(typeof window.toastMsg==='function') window.toastMsg('تم حذف الفني');
+  };
+  window.renderTech=function(){
+    const techs=getTechs();
+    const rows=techs.map(t=>{
+      const id=esc(t.id);
+      return `<div class="tech-card"><div style="display:flex;gap:12px;align-items:center"><div class="avatar">👨‍🔧</div><div><b>${esc(t.name)}</b><p style="color:var(--muted);margin-top:4px">${esc(t.skill||'-')} · ${esc(t.city||'-')} · ${esc(t.phone||'بدون جوال')}</p><p style="color:var(--muted);margin-top:4px">${esc(t.available||'متاح للعمل')} · خبرة ${esc(t.experience||0)} سنوات · ★ ${esc(t.rate||4.8)}</p></div></div><div class="action-set"><button class="mini-btn edit-btn" onclick="editTech('${id}')">تعديل</button><button class="mini-btn red" onclick="deleteTech('${id}')">حذف</button></div></div>`;
+    }).join('') || '<div class="empty-state">لا يوجد فنيين</div>';
+    const list=input('techList'); if(list) list.innerHTML=rows;
+    if(input('rTech')) input('rTech').textContent=techs.length||0;
+    if(input('techCountBadge')) input('techCountBadge').textContent=(techs.length||0)+' فني';
+  };
+  window.addEventListener('load',()=>setTimeout(()=>{try{window.renderTech?.()}catch(e){}},300));
 })();
 </script>
 
