@@ -1450,7 +1450,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
       saveLocalSession(data.user,profile);
       hideLoginError();
       unlockUI();
-      audit('تسجيل دخول Supabase','دخول ناجح: '+email+' / '+profile.role);
+      audit('تسجيل دخول ','دخول ناجح: '+email+' / '+profile.role);
       addAuditRemote('login','دخول ناجح من لوحة الأدمن');
     }catch(e){
       setLoginError(e.message || 'فشل تسجيل الدخول');
