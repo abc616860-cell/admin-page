@@ -1752,5 +1752,169 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 })();
 </script>
 
+
+
+<!-- FIXORA TECHNICIAN ASSIGNED ONLY PATCH - 2026-06-01 -->
+<script>
+(function(){
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  function session(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
+  function isTech(){const s=session(); return s && String(s.role||'').toLowerCase()==='technician';}
+  function isAdminRole(){const s=session(); return s && ['admin','super_admin','dispatcher'].includes(String(s.role||'').toLowerCase());}
+  function esc(v){return String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));}
+  function currentTech(){
+    const s=session(); const techs=load(TECH)||[];
+    if(!s) return null;
+    return techs.find(t=>String(t.user_id||t.userId||'')===String(s.user_id||''))
+        || techs.find(t=>String(t.email||'').toLowerCase()===String(s.email||'').toLowerCase())
+        || null;
+  }
+  function orderTechId(o){return String(o?.assigned_technician_id || o?.techId || o?.tech_id || '');}
+  function ownOrdersOnly(list){
+    if(!isTech()) return list||[];
+    const t=currentTech();
+    if(t) return (list||[]).filter(o=>orderTechId(o)===String(t.id));
+    // لو Supabase RLS رجّع الطلبات الخاصة بالفني فقط، اعرضها حتى لو لم يتم تحميل سجل الفني.
+    return list||[];
+  }
+
+  // توحيد أسماء الأعمدة بين الواجهة و Supabase: techId في الواجهة = assigned_technician_id في قاعدة البيانات.
+  window.normalizeOrderForDb=function(x){return {
+    id:String(x.id||('#'+Date.now())),
+    name:x.name||'', phone:x.phone||'', service:x.service||'', city:x.city||'', address:x.address||'', notes:x.notes||'',
+    price:Number(x.price||0), status:x.status||'جديدة', date:x.date||new Date().toISOString().slice(0,10), time:x.time||'',
+    assigned_technician_id:x.assigned_technician_id||x.techId||x.tech_id||null,
+    tech_id:x.assigned_technician_id||x.techId||x.tech_id||null,
+    payment_status:x.paymentStatus||null, rating:x.rating||null, rating_note:x.ratingNote||null,
+    before_photos:x.beforePhotos||[], after_photos:x.afterPhotos||[], raw:x, updated_at:new Date().toISOString()
+  }};
+  window.dbOrderToLocal=function(r){let x=r.raw||{}; return {...x,
+    id:r.id, name:r.name, phone:r.phone, service:r.service, city:r.city, address:r.address, notes:r.notes,
+    price:Number(r.price||0), status:r.status, date:r.date, time:r.time,
+    assigned_technician_id:r.assigned_technician_id||r.tech_id||x.assigned_technician_id||x.techId||null,
+    techId:r.assigned_technician_id||r.tech_id||x.techId||null,
+    paymentStatus:r.payment_status, rating:r.rating, ratingNote:r.rating_note,
+    beforePhotos:r.before_photos||[], afterPhotos:r.after_photos||[]
+  }};
+  window.normalizeTechForDb=function(x){return {
+    id:String(x.id||('TECH-'+Date.now())), name:x.name||'', skill:x.skill||'', city:x.city||'', rate:Number(x.rate||0),
+    available:x.available||'متاح للعمل', experience:Number(x.experience||0), contract:x.contract||'',
+    user_id:x.user_id||x.userId||null, email:x.email||'', raw:x, updated_at:new Date().toISOString()
+  }};
+  window.dbTechToLocal=function(r){let x=r.raw||{}; return {...x,
+    id:r.id, name:r.name, skill:r.skill, city:r.city, rate:r.rate, available:r.available,
+    experience:r.experience, contract:r.contract, user_id:r.user_id||x.user_id||x.userId||null, email:r.email||x.email||''
+  }};
+
+  window.pullOrdersFromSupabase=async function(){
+    if(!window.sb)return;
+    try{
+      window.__pullingFixora=true;
+      const {data,error}=await window.sb.from('orders').select('*').order('created_at',{ascending:false});
+      if(error) throw error;
+      if(data){localStorage.setItem(ORD,JSON.stringify((data||[]).map(window.dbOrderToLocal))); if(typeof renderAll==='function')renderAll();}
+    }catch(e){console.warn('Supabase orders pull failed',e.message||e)}
+    finally{window.__pullingFixora=false;}
+  };
+  window.pullTechsFromSupabase=async function(){
+    if(!window.sb)return;
+    try{
+      window.__pullingFixora=true;
+      const {data,error}=await window.sb.from('technicians').select('*').order('created_at',{ascending:false});
+      if(error) throw error;
+      if(data&&data.length){localStorage.setItem(TECH,JSON.stringify(data.map(window.dbTechToLocal))); if(typeof renderAll==='function')renderAll();}
+    }catch(e){console.warn('Supabase tech pull failed',e.message||e)}
+    finally{window.__pullingFixora=false;}
+  };
+
+  // تسجيل الدخول: يسمح للفني بالدخول لبوابة الفني فقط، بدون فتح لوحة الأدمن كاملة.
+  window.securityLoginSubmit=async function(){
+    const email=String(document.getElementById('secUser')?.value||'').trim().toLowerCase();
+    const password=String(document.getElementById('secPass')?.value||'');
+    const err=document.getElementById('secError');
+    function showErr(msg){if(err){err.textContent=msg;err.classList.add('show')}}
+    if(!email||!password){showErr('اكتب الإيميل وكلمة المرور');return;}
+    if(!window.sb){showErr('ضع SUPABASE_URL و SUPABASE_ANON_KEY الصحيحين داخل الملف أولًا');return;}
+    try{
+      const {data,error}=await window.sb.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      const {data:profile,error:perr}=await window.sb.from('user_profiles').select('id,full_name,email,role,is_active,active').eq('id',data.user.id).maybeSingle();
+      if(perr) throw perr;
+      if(!profile) throw new Error('المستخدم موجود في Authentication لكنه غير مضاف في جدول user_profiles');
+      if(profile.is_active===false || profile.active===false) throw new Error('هذا المستخدم غير مفعل');
+      const role=String(profile.role||'viewer').toLowerCase();
+      const remember=document.getElementById('secRemember')?.checked;
+      localStorage.setItem(SESSION_KEY,JSON.stringify({
+        token:data.user.id,user_id:data.user.id,email:data.user.email||profile.email||'',username:data.user.email||profile.email||'',
+        name:profile.full_name||data.user.email||'مستخدم',role,is_active:true,source:'supabase_auth',
+        loginAt:new Date().toISOString(),expiresAt:Date.now()+(remember?12:2)*60*60*1000
+      }));
+      err?.classList.remove('show');
+      document.body.classList.remove('secure-locked');
+      await window.pullTechsFromSupabase?.();
+      await window.pullOrdersFromSupabase?.();
+      if(typeof window.applyRolePermissions==='function')window.applyRolePermissions();
+      if(role==='technician') window.showPage('techPortal'); else window.showPage('dashboard');
+    }catch(e){showErr(e.message||'فشل تسجيل الدخول');}
+  };
+
+  const oldApply=window.applyRolePermissions;
+  window.applyRolePermissions=function(){
+    oldApply?.();
+    if(isTech()){
+      document.querySelectorAll('.nav button').forEach(btn=>{
+        const on=btn.getAttribute('onclick')||'';
+        const allowed=on.includes("techPortal") || on.includes("clientTracking");
+        btn.style.display=allowed?'flex':'none';
+      });
+      const sel=document.getElementById('portalTechV8');
+      if(sel){sel.disabled=true; sel.title='الفني يرى طلباته المسندة له فقط';}
+    }
+  };
+
+  window.renderTechPortalV8=function(){
+    const sel=document.getElementById('portalTechV8'); if(!sel)return;
+    const techs=load(TECH)||[]; const s=session(); let tech=currentTech();
+    if(isTech()){
+      sel.innerHTML=tech?`<option value="${esc(tech.id)}">${esc(tech.name)} - ${esc(tech.skill||'-')} - ${esc(tech.city||'-')}</option>`:`<option value="">حساب فني</option>`;
+      sel.disabled=true; if(tech) sel.value=tech.id;
+    }else{
+      sel.disabled=false;
+      const current=sel.value;
+      sel.innerHTML=techs.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} - ${esc(t.skill||'-')} - ${esc(t.city||'-')}</option>`).join('');
+      if(current) sel.value=current;
+      tech=techs.find(t=>String(t.id)===String(sel.value))||techs[0]; if(tech)sel.value=tech.id;
+    }
+    let all=load(ORD)||[]; let orders=isTech()?ownOrdersOnly(all):all.filter(o=>tech&&orderTechId(o)===String(tech.id));
+    if(isTech() && !tech && !orders.length){
+      portalTechSummaryV8.innerHTML='<div class="empty-v8">حسابك غير مربوط بملف فني. اربط user_id في جدول technicians بنفس User ID.</div>';
+      portalOrdersV8.innerHTML=''; return;
+    }
+    const titleTech=tech||{name:s?.name||'فني',skill:'-',city:'-',rate:'-'};
+    const done=orders.filter(o=>o.status==='مكتملة').length;
+    const income=orders.reduce((a,o)=>a+Number(o.price||0),0);
+    portalTechSummaryV8.innerHTML=`<div class="profile-card" style="margin:0"><div class="avatar">👨‍🔧</div><div><h3>${esc(titleTech.name)}</h3><p>${esc(titleTech.skill||'-')} · ${esc(titleTech.city||'-')} · ★ ${esc(titleTech.rate||4.8)}</p></div></div><div class="summary-chip-v8">طلبات مسندة<b>${orders.length}</b></div><div class="summary-chip-v8">طلبات مكتملة<b>${done}</b></div><div class="summary-chip-v8">إيرادات مرتبطة<b>${fmt(income)} ج.م</b></div>`;
+    const stages=window.V8_STAGES||['جديدة','استلم الفني','تحرك الفني','جاري الإصلاح','مكتملة'];
+    portalOrdersV8.innerHTML=orders.map(o=>`<div class="portal-order-v8"><div><h3>${esc(o.id)} - ${esc(o.service||'-')}</h3><p class="muted-v8">${esc(o.name||'-')} · ${esc(o.phone||'-')} · ${esc(o.city||'-')} · ${fmt(Number(o.price||0))} ج.م</p><span class="status ${o.status==='مكتملة'?'paid':o.status==='متأخرة'?'delayed':'unpaid'}">${esc(o.status)}</span></div><div class="stage-actions-v8">${stages.map(st=>`<button class="stage-btn-v8 ${o.status===st?'active':''}" onclick="setOrderStageV8('${esc(o.id)}','${esc(st)}')">${esc(st)}</button>`).join('')}</div></div>`).join('')||'<div class="empty-v8">لا توجد طلبات مسندة لهذا الفني</div>';
+  };
+
+  window.setOrderStageV8=async function(idv,stage){
+    let orders=load(ORD)||[]; const o=orders.find(i=>String(i.id)===String(idv));
+    if(!o) return;
+    if(isTech()){
+      const t=currentTech();
+      if(t && orderTechId(o)!==String(t.id)){alert('غير مسموح بتعديل طلب غير مسند لك');return;}
+    }
+    o.status=stage; o.updated_at=new Date().toISOString();
+    localStorage.setItem(ORD,JSON.stringify(orders));
+    try{ if(window.sb) await window.sb.from('orders').update({status:stage,updated_at:new Date().toISOString()}).eq('id',idv); }catch(e){console.warn('status update failed',e.message||e)}
+    renderAll?.(); renderTechPortalV8(); renderClientTrackingV8?.(); toastMsg?.('تم تحديث حالة الطلب');
+  };
+
+  // عند تحميل الصفحة: الفني يدخل مباشرة على بوابته، والأدمن يبقى على نفس التصميم الكامل.
+  window.addEventListener('load',()=>setTimeout(()=>{try{window.applyRolePermissions?.(); if(isTech()) window.showPage('techPortal'); renderTechPortalV8();}catch(e){}},600));
+})();
+</script>
+
 </body>
 </html>
