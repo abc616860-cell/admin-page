@@ -1221,7 +1221,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
   function loadUsers(){let users=[];try{users=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')}catch(e){} if(!users.length){users=DEFAULT_USERS; localStorage.setItem(USERS_KEY,JSON.stringify(users));} return users;}
   function saveUsers(users){localStorage.setItem(USERS_KEY,JSON.stringify(users));}
   function currentSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(e){return null}}
-  function isAdmin(){const s=currentSession(); return s && s.(role === 'admin' || role === 'super_admin');}
+  function isAdmin(){const s=currentSession(); return s && (s.role === 'admin' || s.role === 'super_admin');}
   function audit(action,details){if(typeof window.securityAudit==='function')window.securityAudit(clean(action),clean(details||''));}
   function canManageUsers(){if(!isAdmin()){alert('إدارة المستخدمين تحتاج صلاحية Admin'); audit('رفض صلاحية','محاولة فتح/تعديل المستخدمين'); return false;} return true;}
   window.renderUserPermissions = function(){
@@ -1666,6 +1666,89 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
     }catch(e){console.warn('Final permission refresh skipped:',e.message||e);}
   }
   window.addEventListener('load',()=>setTimeout(()=>{refreshSupabaseSession();applyRolePermissions();},500));
+})();
+</script>
+
+
+
+<!-- V15: Supabase Users Save Fix (Design unchanged) -->
+<script>
+(function(){
+  'use strict';
+  function val(id){ return String(document.getElementById(id)?.value || '').trim(); }
+  function checkedPerms(){ return [...document.querySelectorAll('#uPermissions input:checked')].map(x=>String(x.value||'').trim()).filter(Boolean); }
+  function localSession(){ try{return JSON.parse(localStorage.getItem('FIXORA_ADMIN_SESSION_V11')||'null')}catch(e){return null} }
+  function isFullAdmin(){ const s=localSession(); return s && ['admin','super_admin'].includes(s.role) && s.is_active !== false; }
+  async function restoreAdminSession(saved){
+    try{
+      const sess=saved?.data?.session;
+      if(sess?.access_token && sess?.refresh_token && window.sb?.auth?.setSession){
+        await window.sb.auth.setSession({access_token:sess.access_token, refresh_token:sess.refresh_token});
+      }
+    }catch(e){ console.warn('Restore admin session skipped', e); }
+  }
+  async function upsertProfile(userId, payload){
+    const profile = {
+      id: userId,
+      full_name: payload.full_name,
+      email: payload.email,
+      role: payload.role,
+      active: payload.active,
+      is_active: payload.active,
+      permissions: payload.permissions,
+      updated_at: new Date().toISOString()
+    };
+    const {error}=await window.sb.from('user_profiles').upsert(profile,{onConflict:'id'});
+    if(error){
+      // fallback لو جدولك لا يحتوي بعض الأعمدة
+      const simple={id:userId, full_name:payload.full_name, email:payload.email, role:payload.role, active:payload.active};
+      const r=await window.sb.from('user_profiles').upsert(simple,{onConflict:'id'});
+      if(r.error) throw r.error;
+    }
+  }
+  window.saveAdminUser = async function(){
+    if(!window.sb){ alert('Supabase غير متصل'); return; }
+    if(!isFullAdmin()){ alert('حفظ المستخدم يحتاج صلاحية Admin'); return; }
+
+    const username=val('uUsername');
+    const full_name=val('uFullName');
+    const email=val('uEmail').toLowerCase();
+    const password=String(document.getElementById('uPassword')?.value || '');
+    const role=val('uRole') || 'viewer';
+    const active=val('uActive') !== 'false';
+    const permissions=checkedPerms();
+
+    if(!username || !full_name || !email){ alert('اكتب اسم المستخدم والاسم والبريد'); return; }
+    if(!password || password.length < 6){ alert('كلمة المرور لا تقل عن 6 أحرف للمستخدم الجديد'); return; }
+
+    const btn=[...document.querySelectorAll('button')].find(b=>String(b.getAttribute('onclick')||'').includes('saveAdminUser'));
+    const oldTxt=btn?btn.textContent:'';
+    try{
+      if(btn){ btn.disabled=true; btn.textContent='جاري الحفظ...'; }
+      const adminSession = await window.sb.auth.getSession();
+
+      const {data,error}=await window.sb.auth.signUp({
+        email,
+        password,
+        options:{ data:{ username, full_name, role } }
+      });
+      if(error) throw error;
+      if(!data?.user?.id) throw new Error('لم يتم إنشاء المستخدم داخل Supabase Auth. راجع إعدادات Auth/Email Confirmation.');
+
+      await restoreAdminSession(adminSession);
+      await upsertProfile(data.user.id,{username,full_name,email,role,active,permissions});
+
+      if(typeof window.addAuditRemote==='function') window.addAuditRemote('create_user','إنشاء مستخدم: '+email+' / '+role);
+      if(typeof window.clearUserForm==='function') window.clearUserForm();
+      if(typeof window.renderUsersAdmin==='function') window.renderUsersAdmin();
+      alert('تم حفظ المستخدم بنجاح داخل Supabase');
+    }catch(e){
+      console.error('saveAdminUser failed:', e);
+      alert('فشل حفظ المستخدم: ' + (e.message || e));
+    }finally{
+      if(btn){ btn.disabled=false; btn.textContent=oldTxt || 'حفظ المستخدم'; }
+    }
+  };
 })();
 </script>
 
