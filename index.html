@@ -7,7 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com data: blob:; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
 
 /* V9: Professional printable invoice override */
 function invoicePaymentClassV9(x){
@@ -248,6 +249,7 @@ const SUPABASE_URL='https://kbnqrpkexkjzndunnxcq.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtibnFycGtleGtqem5kdW5ueGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2OTk5MTIsImV4cCI6MjA5NTI3NTkxMn0.zs1q4hmUDH80j6guhciKJbfi75aB3MAlD6sAvkGcZWU';
 const SB_READY=SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length>40 && window.supabase;
 const sb=SB_READY?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+window.sb = sb;
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v)); if(k===ORD) syncOrdersToSupabase(v); if(k===TECH) syncTechsToSupabase(v)}
 function normalizeOrderForDb(x){return {id:String(x.id||('#'+Date.now())),name:x.name||'',phone:x.phone||'',service:x.service||'',city:x.city||'',address:x.address||'',notes:x.notes||'',price:Number(x.price||0),status:x.status||'جديدة',date:x.date||new Date().toISOString().slice(0,10),time:x.time||'',tech_id:x.techId||null,payment_status:x.paymentStatus||null,rating:x.rating||null,rating_note:x.ratingNote||null,before_photos:x.beforePhotos||[],after_photos:x.afterPhotos||[],raw:x,updated_at:new Date().toISOString()}}
@@ -1343,7 +1345,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 (function(){
   'use strict';
   const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
-  const ADMIN_ROLES=['super_admin','admin','dispatcher'];
+  const ADMIN_ROLES=['super_admin','admin','dispatcher','technician','viewer','client'];
   const FULL_ADMIN_ROLES=['super_admin','admin'];
   const ROLE_PAGES={
     super_admin:['*'],
@@ -1375,7 +1377,7 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
       email:user?.email || profile?.email || '',
       name:profile?.full_name || user?.email || 'مستخدم',
       role:profile?.role || 'client',
-      is_active:profile?.is_active !== false,
+      is_active:(profile?.is_active !== false && profile?.active !== false),
       loginAt:new Date().toISOString(),
       expiresAt:Date.now()+hours*60*60*1000,
       source:'supabase_auth'
@@ -1425,12 +1427,12 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
     if(!window.sb) throw new Error('Supabase غير مفعل: ضع SUPABASE_URL و SUPABASE_ANON_KEY داخل الملف');
     const {data:profile,error}=await window.sb
       .from('user_profiles')
-      .select('id,full_name,email,role,is_active')
+      .select('id,full_name,email,role,is_active,active')
       .eq('id',user.id)
       .maybeSingle();
     if(error) throw error;
     if(!profile) throw new Error('المستخدم موجود في Authentication لكنه غير مضاف في جدول user_profiles');
-    if(profile.is_active===false) throw new Error('هذا المستخدم غير مفعل');
+    if(profile.is_active===false || profile.active===false) throw new Error('هذا المستخدم غير مفعل');
     if(!ADMIN_ROLES.includes(profile.role)) throw new Error('ليس لديك صلاحية دخول لوحة الأدمن. الدور الحالي: '+profile.role);
     return profile;
   }
@@ -1526,45 +1528,143 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 </script>
 
 
+
+
+<!-- V16: Final Supabase Permissions Patch - Design unchanged -->
 <script>
-window.forceFixoraAdmin = true;
-
 (function(){
-  const originalAlert = window.alert;
-
-  window.checkAdminAccess = function(){
-    const role =
-      sessionStorage.getItem('sb_user_role') ||
-      sessionStorage.getItem('role') ||
-      '';
-
-    return role === 'admin' || role === 'super_admin';
+  'use strict';
+  const SESSION_KEY='FIXORA_ADMIN_SESSION_V11';
+  const ROLE_PAGES={
+    super_admin:['*'],
+    admin:['*'],
+    dispatcher:['dashboard','orders','assign','clients','clientTracking','notifications','reports','payments'],
+    technician:['techPortal','clientTracking'],
+    viewer:['dashboard','reports','clientTracking'],
+    client:['clientTracking']
   };
-
-  const oldCan = window.can;
-
-  window.can = function(permission){
-    if(window.checkAdminAccess()) return true;
-
-    if(typeof oldCan === 'function'){
-      try{
-        return oldCan(permission);
-      }catch(e){}
-    }
-
-    return false;
+  const ROLE_ACTIONS={
+    super_admin:['*'],
+    admin:['*'],
+    dispatcher:['add_order','edit_order','update_order','assign_order','view_clients','view_reports','print_invoice'],
+    technician:['update_my_order','print_invoice'],
+    viewer:['view_reports'],
+    client:['track_order']
   };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    const role =
-      sessionStorage.getItem('sb_user_role') ||
-      sessionStorage.getItem('role');
-
-    if(role === 'super_admin'){
-      sessionStorage.setItem('role','super_admin');
-      sessionStorage.setItem('sb_user_role','super_admin');
-    }
-  });
+  function clean(v){return String(v||'').replace(/<[^>]*>/g,'').trim();}
+  function getSession(){
+    try{
+      const s=JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+      if(!s || !s.expiresAt || Date.now()>Number(s.expiresAt)){localStorage.removeItem(SESSION_KEY);return null;}
+      return s;
+    }catch(e){return null;}
+  }
+  function hasPage(role,page){const p=ROLE_PAGES[role]||[];return p.includes('*')||p.includes(page);}
+  function hasAction(role,action){const a=ROLE_ACTIONS[role]||[];return a.includes('*')||a.includes(action);}
+  function audit(action,details){
+    try{ if(typeof window.securityAudit==='function') window.securityAudit(clean(action),clean(details||'')); }catch(e){}
+    try{
+      const s=getSession();
+      if(window.sb && s && s.source==='supabase_auth'){
+        window.sb.from('audit_logs').insert({user_id:s.user_id||null,action:clean(action),details:clean(details||'')}).then(()=>{});
+      }
+    }catch(e){}
+  }
+  function deny(msg,action){alert(msg||'ليس لديك صلاحية لتنفيذ هذه العملية');audit('رفض صلاحية',action||msg||'');return false;}
+  window.fixoraSession=getSession;
+  window.canPage=function(page){const s=getSession();return !!s && hasPage(s.role,page);};
+  window.canAction=function(action){const s=getSession();return !!s && hasAction(s.role,action);};
+  window.requireAction=function(action,label){
+    const s=getSession();
+    if(!s){document.body.classList.add('secure-locked');return false;}
+    if(!hasAction(s.role,action)) return deny('ليس لديك صلاحية: '+(label||action), action);
+    return true;
+  };
+  window.requireAdmin=function(label){
+    const s=getSession();
+    if(!s){document.body.classList.add('secure-locked');return false;}
+    if(!['super_admin','admin'].includes(s.role)) return deny('هذه العملية تحتاج صلاحية Admin', label||'admin');
+    return true;
+  };
+  function pageFromButton(btn){
+    const on=btn.getAttribute('onclick')||'';
+    const m=on.match(/showPage\(['"]([^'"]+)/);
+    return m?m[1]:'';
+  }
+  window.applyRolePermissions=function(){
+    const s=getSession();
+    document.querySelectorAll('.nav button').forEach(btn=>{
+      const page=btn.dataset.page || pageFromButton(btn);
+      if(!page) return;
+      btn.dataset.page=page;
+      btn.style.display=(s && hasPage(s.role,page))?'flex':'none';
+    });
+    document.querySelectorAll('.user b').forEach(x=>x.textContent=s?(s.name||s.email||'مستخدم'):'');
+    document.querySelectorAll('.user small').forEach(x=>x.textContent=s?('صلاحية: '+s.role):'');
+  };
+  const originalShowPage=window.showPage;
+  window.showPage=function(id,el){
+    const s=getSession();
+    if(!s){document.body.classList.add('secure-locked');return;}
+    if(!hasPage(s.role,id)) return deny('غير مسموح لك بفتح هذه الصفحة', 'page:'+id);
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const page=document.getElementById(id); if(page) page.classList.add('active');
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); if(el) el.classList.add('active');
+    if(id==='users' && typeof renderUsersAdmin==='function') renderUsersAdmin();
+    if(id==='auditLog' && typeof renderAuditLog==='function') renderAuditLog();
+    applyRolePermissions();
+  };
+  function wrap(name,action,label,opts={}){
+    const fn=window[name];
+    if(typeof fn!=='function') return;
+    window[name]=function(){
+      if(opts.admin){ if(!window.requireAdmin(label)) return; }
+      else { if(!window.requireAction(action,label)) return; }
+      audit('تنفيذ عملية',label||name);
+      return fn.apply(this,arguments);
+    };
+  }
+  wrap('addOrder','add_order','إضافة طلب');
+  wrap('editOrder','edit_order','تعديل طلب');
+  wrap('saveEditedOrder','edit_order','حفظ تعديل طلب');
+  wrap('updateOrderStatus','update_order','تغيير حالة طلب');
+  wrap('setOrderStageV8','update_my_order','تحديث مرحلة طلب للفني');
+  wrap('addTech','manage_technicians','إضافة فني',{admin:true});
+  wrap('saveAdminUser','manage_users','إدارة المستخدمين',{admin:true});
+  wrap('deleteAdminUser','manage_users','حذف مستخدم',{admin:true});
+  wrap('toggleAdminUser','manage_users','تفعيل/تعطيل مستخدم',{admin:true});
+  wrap('exportUsersSecurity','manage_users','تصدير المستخدمين',{admin:true});
+  wrap('secureClearDemo','system_settings','مسح بيانات التجربة',{admin:true});
+  wrap('deleteOrder','edit_order','حذف طلب');
+  wrap('printInvoice','print_invoice','طباعة فاتورة');
+  async function refreshSupabaseSession(){
+    if(!window.sb) return;
+    try{
+      const {data:{session}}=await window.sb.auth.getSession();
+      if(!session?.user) return;
+      const {data:profile,error}=await window.sb.from('user_profiles').select('id,full_name,email,role,is_active,active').eq('id',session.user.id).maybeSingle();
+      if(error || !profile) return;
+      if(profile.is_active===false || profile.active===false){localStorage.removeItem(SESSION_KEY);document.body.classList.add('secure-locked');return;}
+      const old=getSession()||{};
+      const hours=document.getElementById('secRemember')?.checked?12:2;
+      localStorage.setItem(SESSION_KEY,JSON.stringify({
+        ...old,
+        token:session.user.id,
+        user_id:session.user.id,
+        email:session.user.email||profile.email||'',
+        username:session.user.email||profile.email||'',
+        name:profile.full_name||session.user.email||'مستخدم',
+        role:profile.role||'viewer',
+        is_active:true,
+        source:'supabase_auth',
+        loginAt:old.loginAt||new Date().toISOString(),
+        expiresAt:old.expiresAt && old.expiresAt>Date.now()?old.expiresAt:Date.now()+hours*60*60*1000
+      }));
+      document.body.classList.remove('secure-locked');
+      applyRolePermissions();
+    }catch(e){console.warn('Final permission refresh skipped:',e.message||e);}
+  }
+  window.addEventListener('load',()=>setTimeout(()=>{refreshSupabaseSession();applyRolePermissions();},500));
 })();
 </script>
 
