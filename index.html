@@ -139,7 +139,7 @@ body.secure-locked .security-login{display:flex}.security-card{width:min(460px,1
         </div>
       </div>
       <div id="orders" class="page"><div class="section-grid"><div class="card"><div class="card-head"><h3>إضافة طلب صيانة</h3><button class="btn light" onclick="seedDemo()">بيانات تجربة</button></div><div class="mini-form"><div class="field"><label>اسم العميل</label><input id="oName"></div><div class="field"><label>رقم الجوال</label><input id="oPhone"></div><div class="field"><label>الخدمة</label><select id="oService"><option>صيانة دورية</option><option>إصلاح عطل</option><option>تركيب جهاز</option><option>تكييف</option><option>كهرباء</option><option>سباكة</option></select></div><div class="field"><label>المدينة</label><select id="oCity"><option>جدة</option><option>الرياض</option><option>الدمام</option><option>مكة</option></select></div><div class="field"><label>السعر</label><input id="oPrice" type="number"></div><div class="field"><label>الحالة</label><select id="oStatus"><option>جديدة</option><option>قيد التنفيذ</option><option>مكتملة</option><option>متأخرة</option></select></div><div class="field" style="grid-column:1/-1"><label>العنوان / الملاحظات</label><textarea id="oNotes"></textarea></div></div><br><button class="btn" onclick="addOrder()">حفظ الطلب</button></div><div class="card"><div class="card-head"><h3>كل طلبات الصيانة</h3></div><div id="allOrders" class="list-card"></div></div></div></div>
-      <div id="technicians" class="page"><div class="section-grid"><div class="card"><h3>إضافة فني</h3><br><div class="mini-form"><div class="field"><label>اسم الفني</label><input id="tName"></div><div class="field"><label>التخصص</label><select id="tSkill"><option>تكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option></select></div><div class="field"><label>المدينة</label><input id="tCity"></div><div class="field"><label>التقييم</label><input id="tRate" type="number" value="4.8" step=".1"></div></div><br><button class="btn" onclick="addTech()">إضافة الفني</button></div><div class="card"><h3>الفنيين</h3><br><div id="techList" class="list-card"></div></div></div></div>
+      <div id="technicians" class="page"><div class="section-grid"><div class="card"><div class="card-head"><h3 id="techFormTitle">إضافة فني</h3><button class="btn light" onclick="clearTechForm()">إضافة جديد</button></div><input id="tEditId" type="hidden"><div class="mini-form"><div class="field"><label>اسم الفني</label><input id="tName" placeholder="اسم الفني"></div><div class="field"><label>التخصص</label><select id="tSkill"><option>تكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>غسالات</option><option>ثلاجات</option><option>أفران</option><option>مجففات</option><option>مكانس</option><option>جميع الأجهزة المنزلية</option></select></div><div class="field"><label>المدينة</label><input id="tCity" placeholder="المدينة"></div><div class="field"><label>رقم الجوال</label><input id="tPhone" placeholder="05xxxxxxxx"></div><div class="field"><label>التقييم</label><input id="tRate" type="number" value="4.8" step=".1"></div><div class="field"><label>الحالة</label><select id="tAvailable"><option>متاح للعمل</option><option>مشغول</option><option>إجازة</option><option>غير مفعل</option></select></div><div class="field"><label>سنوات الخبرة</label><input id="tExperience" type="number" value="5"></div><div class="field"><label>User ID للفني</label><input id="tUserId" placeholder="auth.users id اختياري"></div><div class="field" style="grid-column:1/-1"><label>ملاحظات / نوع العقد</label><input id="tContract" placeholder="بالطلب / دوام كامل / ملاحظات"></div></div><br><button class="btn" id="techSaveBtn" onclick="addTech()">حفظ الفني</button><button class="btn light" onclick="clearTechForm()">تفريغ</button></div><div class="card"><div class="card-head"><h3>الفنيين</h3><span class="status paid" id="techCountBadge">0 فني</span></div><div id="techList" class="list-card"></div></div></div></div>
 
       <div id="techProfile" class="page">
         <div class="profile-layout-v6">
@@ -1913,6 +1913,120 @@ window.addEventListener('load',()=>setTimeout(enhance,250));
 
   // عند تحميل الصفحة: الفني يدخل مباشرة على بوابته، والأدمن يبقى على نفس التصميم الكامل.
   window.addEventListener('load',()=>setTimeout(()=>{try{window.applyRolePermissions?.(); if(isTech()) window.showPage('techPortal'); renderTechPortalV8();}catch(e){}},600));
+})();
+</script>
+
+
+<script>
+/* Technician CRUD patch - add/edit/delete without changing dashboard design */
+(function(){
+  const TECH_KEY = window.TECH || 'fixora_exact_techs_v1';
+  function clean(v){return String(v ?? '').trim()}
+  function esc(v){return String(v ?? '').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
+  function getTechs(){try{return JSON.parse(localStorage.getItem(TECH_KEY)||'[]')}catch(e){return[]}}
+  function setTechs(v){localStorage.setItem(TECH_KEY,JSON.stringify(v||[]))}
+  function canManage(){
+    if(typeof window.requireAdmin==='function') return window.requireAdmin('إدارة الفنيين');
+    return true;
+  }
+  function input(id){return document.getElementById(id)}
+  function techFromForm(existing){
+    const base = existing || {};
+    return {
+      ...base,
+      id: clean(input('tEditId')?.value) || base.id || ('TECH-'+Date.now().toString().slice(-6)),
+      name: clean(input('tName')?.value) || 'فني جديد',
+      skill: clean(input('tSkill')?.value) || '-',
+      city: clean(input('tCity')?.value) || 'جدة',
+      phone: clean(input('tPhone')?.value),
+      rate: Number(input('tRate')?.value || 4.8),
+      available: clean(input('tAvailable')?.value) || 'متاح للعمل',
+      experience: Number(input('tExperience')?.value || 0),
+      user_id: clean(input('tUserId')?.value) || base.user_id || '',
+      contract: clean(input('tContract')?.value) || base.contract || 'بالطلب',
+      updated_at: new Date().toISOString()
+    };
+  }
+  async function upsertTechSupabase(t){
+    if(!window.sb) return;
+    try{
+      const row={id:String(t.id),name:t.name||'',skill:t.skill||'',city:t.city||'',rate:Number(t.rate||0),available:t.available||'',experience:Number(t.experience||0),contract:t.contract||'',user_id:t.user_id||null,raw:t,updated_at:new Date().toISOString()};
+      const {error}=await window.sb.from('technicians').upsert(row,{onConflict:'id'});
+      if(error) throw error;
+    }catch(e){console.warn('Supabase technician save failed',e.message||e)}
+  }
+  async function deleteTechSupabase(id){
+    if(!window.sb) return;
+    try{const {error}=await window.sb.from('technicians').delete().eq('id',id); if(error) throw error;}catch(e){console.warn('Supabase technician delete failed',e.message||e)}
+  }
+  window.clearTechForm=function(){
+    ['tEditId','tName','tCity','tPhone','tUserId','tContract'].forEach(id=>{const el=input(id); if(el) el.value='';});
+    if(input('tSkill')) input('tSkill').value='تكييف';
+    if(input('tRate')) input('tRate').value='4.8';
+    if(input('tAvailable')) input('tAvailable').value='متاح للعمل';
+    if(input('tExperience')) input('tExperience').value='5';
+    if(input('techFormTitle')) input('techFormTitle').textContent='إضافة فني';
+    if(input('techSaveBtn')) input('techSaveBtn').textContent='حفظ الفني';
+  };
+  window.addTech=async function(){
+    if(!canManage()) return;
+    const techs=getTechs();
+    const editId=clean(input('tEditId')?.value);
+    const idx=editId?techs.findIndex(t=>String(t.id)===String(editId)):-1;
+    const t=techFromForm(idx>-1?techs[idx]:null);
+    if(idx>-1) techs[idx]=t; else techs.push(t);
+    setTechs(techs);
+    await upsertTechSupabase(t);
+    window.clearTechForm();
+    if(typeof window.renderAll==='function') window.renderAll();
+    if(typeof window.renderTechProfile==='function') window.renderTechProfile();
+    if(typeof window.renderTechPortalV8==='function') window.renderTechPortalV8();
+    if(typeof window.toastMsg==='function') window.toastMsg(idx>-1?'تم تعديل بيانات الفني':'تم إضافة الفني'); else alert(idx>-1?'تم تعديل بيانات الفني':'تم إضافة الفني');
+  };
+  window.editTech=function(id){
+    if(!canManage()) return;
+    const t=getTechs().find(x=>String(x.id)===String(id)); if(!t) return;
+    if(input('tEditId')) input('tEditId').value=t.id||'';
+    if(input('tName')) input('tName').value=t.name||'';
+    if(input('tSkill')) input('tSkill').value=t.skill||'تكييف';
+    if(input('tCity')) input('tCity').value=t.city||'';
+    if(input('tPhone')) input('tPhone').value=t.phone||'';
+    if(input('tRate')) input('tRate').value=t.rate||4.8;
+    if(input('tAvailable')) input('tAvailable').value=t.available||'متاح للعمل';
+    if(input('tExperience')) input('tExperience').value=t.experience||0;
+    if(input('tUserId')) input('tUserId').value=t.user_id||t.userId||'';
+    if(input('tContract')) input('tContract').value=t.contract||'';
+    if(input('techFormTitle')) input('techFormTitle').textContent='تعديل بيانات الفني';
+    if(input('techSaveBtn')) input('techSaveBtn').textContent='حفظ التعديل';
+    window.showPage?.('technicians');
+    input('tName')?.focus();
+  };
+  window.deleteTech=async function(id){
+    if(!canManage()) return;
+    const techs=getTechs();
+    const t=techs.find(x=>String(x.id)===String(id)); if(!t) return;
+    const linked=(JSON.parse(localStorage.getItem(window.ORD||'fixora_exact_orders_v1')||'[]')).filter(o=>String(o.techId||o.tech_id||o.assigned_technician_id||'')===String(id)).length;
+    const msg=linked?`الفني ${t.name} عليه ${linked} طلب مسند. سيتم حذف الفني فقط ولن يتم حذف الطلبات. هل تكمل؟`:`هل تريد حذف الفني ${t.name}؟`;
+    if(!confirm(msg)) return;
+    setTechs(techs.filter(x=>String(x.id)!==String(id)));
+    await deleteTechSupabase(id);
+    window.clearTechForm();
+    if(typeof window.renderAll==='function') window.renderAll();
+    if(typeof window.renderTechProfile==='function') window.renderTechProfile();
+    if(typeof window.renderTechPortalV8==='function') window.renderTechPortalV8();
+    if(typeof window.toastMsg==='function') window.toastMsg('تم حذف الفني');
+  };
+  window.renderTech=function(){
+    const techs=getTechs();
+    const rows=techs.map(t=>{
+      const id=esc(t.id);
+      return `<div class="tech-card"><div style="display:flex;gap:12px;align-items:center"><div class="avatar">👨‍🔧</div><div><b>${esc(t.name)}</b><p style="color:var(--muted);margin-top:4px">${esc(t.skill||'-')} · ${esc(t.city||'-')} · ${esc(t.phone||'بدون جوال')}</p><p style="color:var(--muted);margin-top:4px">${esc(t.available||'متاح للعمل')} · خبرة ${esc(t.experience||0)} سنوات · ★ ${esc(t.rate||4.8)}</p></div></div><div class="action-set"><button class="mini-btn edit-btn" onclick="editTech('${id}')">تعديل</button><button class="mini-btn red" onclick="deleteTech('${id}')">حذف</button></div></div>`;
+    }).join('') || '<div class="empty-state">لا يوجد فنيين</div>';
+    const list=input('techList'); if(list) list.innerHTML=rows;
+    if(input('rTech')) input('rTech').textContent=techs.length||0;
+    if(input('techCountBadge')) input('techCountBadge').textContent=(techs.length||0)+' فني';
+  };
+  window.addEventListener('load',()=>setTimeout(()=>{try{window.renderTech?.()}catch(e){}},300));
 })();
 </script>
 
