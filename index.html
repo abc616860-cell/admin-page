@@ -909,7 +909,7 @@ function makePanel(select){
  list.addEventListener('click',e=>{const opt=e.target.closest('.select-panel-option'); if(!opt)return; select.value=opt.dataset.value; select.dispatchEvent(new Event('change',{bubbles:true})); sync(); ui.classList.remove('open'); document.body.classList.remove('select-panel-backdrop');});
  select.addEventListener('change',sync); render(); sync();
 }
-function enhance(){document.querySelectorAll('select').forEach(makePanel); if(!document.querySelector('.choice-upgrade-note')){const target=document.querySelector('#orders .card,#techs .card,#assign .card')||document.querySelector('.main'); if(target){const n=document.createElement('div');n.className='choice-upgrade-note';n.innerHTML='✨ تم تطوير الاختيارات: Panels احترافية + بحث + مجموعات + أيقونات بدل القوائم التقليدية'; target.insertBefore(n,target.children[1]||target.firstChild);}}}
+function enhance(){document.querySelectorAll('select').forEach(makePanel); if(!document.querySelector('.choice-upgrade-note')){const target=document.querySelector('#orders .card,#techs .card,#assign .card')||document.querySelector('.main'); if(target){const n=document.createElement('div');n.className='choice-upgrade-note';n.innerHTML=''; target.insertBefore(n,target.children[1]||target.firstChild);}}}
 window.enhanceChoicePanelsV10=enhance;
 const oldRender=window.renderAll; if(typeof oldRender==='function'){window.renderAll=function(){oldRender.apply(this,arguments); setTimeout(enhance,0)}}
 const oldShow=window.showPage; if(typeof oldShow==='function'){window.showPage=function(){oldShow.apply(this,arguments); setTimeout(enhance,0)}}
