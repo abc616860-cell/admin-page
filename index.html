@@ -29,7 +29,7 @@
     <header class="topbar">
       <button class="hamb" onclick="document.querySelector('.sidebar').scrollIntoView({behavior:'smooth'})">☰</button>
       <div class="search"><input id="globalSearch" placeholder="ابحث عن طلب، عميل، فني، فاتورة..." oninput="renderAll()"></div>
-      <div class="top-icons"><button class="icon-btn" onclick="toggleTheme()">🌙</button><button class="icon-btn" onclick="showPage('notifications')">🔔<span class="badge" id="notifBadge">0</span></button></div>
+      <div class="top-icons"><button class="icon-btn" onclick="toggleTheme()">🌙</button><button class="icon-btn" onclick="showPage('notifications')">🔔<span class="badge" id="notifBadge">0</span></button><button class="icon-btn" onclick="logout()" title="تسجيل خروج">🚪</button></div>
       <div class="user"><div class="avatar">👨🏻</div><div><b id="currentUserName">مدير النظام</b><small id="connectionStatus">محلي</small></div></div>
     </header>
     <section class="content">
@@ -61,7 +61,7 @@
       <div id="payments" class="page"><div class="page-title"><div><h1>الفواتير والمدفوعات</h1><p>طباعة الفواتير ومراجعة حالة الدفع</p></div><button class="btn light" onclick="window.print()">طباعة الصفحة</button></div><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>الخدمة</th><th>التاريخ</th><th>المبلغ</th><th>الدفع</th><th>إجراء</th></tr></thead><tbody id="invoiceRows2"></tbody></table></div></div></div>
       <div id="reports" class="page"><div class="page-title"><div><h1>التقارير</h1><p>مؤشرات تشغيلية سريعة</p></div></div><div class="kpis"><div class="kpi"><div><h4>نسبة الإنجاز</h4><strong id="completeRate">0%</strong><p>مكتملة من إجمالي الطلبات</p></div><div class="kicon ki-green">✅</div></div><div class="kpi"><div><h4>متوسط الطلب</h4><strong id="avgOrder">0</strong><p>متوسط قيمة الطلب</p></div><div class="kicon ki-blue">📌</div></div><div class="kpi"><div><h4>طلبات متأخرة</h4><strong id="lateOrdersKpi">0</strong><p>تحتاج متابعة</p></div><div class="kicon ki-orange">⏱</div></div><div class="kpi"><div><h4>فنيين نشطين</h4><strong id="activeTechsKpi">0</strong><p>متاحين للعمل</p></div><div class="kicon ki-purple">👷</div></div></div></div>
       <div id="notifications" class="page"><div class="page-title"><div><h1>الإشعارات</h1><p>تنبيهات تشغيلية تلقائية</p></div></div><div class="card"><div id="notifyCenter" class="timeline"></div></div></div>
-      <div id="users" class="page"><div class="page-title"><div><h1>المستخدمين والصلاحيات</h1><p>إدارة محلية للصلاحيات داخل النسخة الحالية</p></div></div><div class="wide-grid"><div class="card"><div class="mini-form"><div class="field"><label>الاسم</label><input id="uName"></div><div class="field"><label>البريد</label><input id="uEmail" type="email"></div><div class="field"><label>الدور</label><select id="uRole"><option>Admin</option><option>Dispatcher</option><option>Technician</option><option>Viewer</option></select></div><div class="field"><label>الحالة</label><select id="uActive"><option>Active</option><option>Disabled</option></select></div></div><br><button class="btn" onclick="addUser()">إضافة مستخدم</button></div><div class="card"><div class="danger-note">الصلاحيات الحقيقية لازم تتعمل من Supabase RLS. هذه الشاشة تنظيمية داخل الواجهة فقط.</div><div id="usersRows" class="list-card"></div></div></div></div>
+      <div id="users" class="page"><div class="page-title"><div><h1>المستخدمين والصلاحيات</h1><p>إنشاء مستخدمين حقيقيين في Supabase Authentication مع ربط الصلاحيات</p></div></div><div class="wide-grid"><div class="card"><div class="mini-form"><div class="field"><label>الاسم</label><input id="uName" placeholder="اسم المستخدم"></div><div class="field"><label>البريد</label><input id="uEmail" type="email" placeholder="user@example.com"></div><div class="field"><label>كلمة المرور</label><input id="uPassword" type="password" placeholder="كلمة مرور لا تقل عن 6 أحرف"></div><div class="field"><label>الدور</label><select id="uRole"><option value="admin">Admin</option><option value="dispatcher">Dispatcher</option><option value="technician">Technician</option><option value="viewer">Viewer</option><option value="client">Client</option></select></div><div class="field"><label>الحالة</label><select id="uActive"><option value="Active">Active</option><option value="Disabled">Disabled</option></select></div><div class="field"><label>ربط الفني - اختياري</label><select id="uTechnicianId"><option value="">بدون ربط</option></select></div></div><br><div class="actions"><button class="btn" onclick="addUser()">إنشاء مستخدم حقيقي</button><button class="btn light" onclick="clearUserForm()">تفريغ</button></div></div><div class="card"><div class="danger-note">هذه الشاشة الآن تنشئ حسابًا في Supabase Auth ثم تضيف صلاحياته في user_profiles. لإنشاء فني، اختار role = technician واربطه بالفني المناسب.</div><div id="usersRows" class="list-card"></div></div></div></div>
       <div id="settings" class="page"><div class="page-title"><div><h1>الإعدادات</h1><p>إدارة النسخة والربط والنسخ الاحتياطي</p></div></div><div class="section-grid"><div class="card"><h3>حالة الربط</h3><br><div class="danger-note" id="dbStatus">جاري الفحص...</div><div class="actions"><button class="btn light" onclick="exportBackup()">تصدير نسخة احتياطية</button><button class="btn light" onclick="document.getElementById('backupInput').click()">استيراد نسخة</button><input id="backupInput" type="file" accept="application/json" class="hidden" onchange="importBackup(event)"><button class="btn red" onclick="logout()">تسجيل خروج</button></div></div><div class="card"><h3>ملاحظات أمان</h3><br><p class="muted">الملف يعمل Client Side. استخدم RLS وسياسات Supabase لمنع أي وصول غير مصرح به. لا تضع Service Role Key داخل ملف HTML أبدًا.</p></div></div></div>
     </section>
   </main>
@@ -257,8 +257,58 @@ function renderTechPortal(){const id=get('portalTech').value,tech=load(KEYS.TECH
 function copyTechReport(){const id=get('portalTech').value,orders=load(KEYS.ORD).filter(o=>o.techId===id),tech=load(KEYS.TECH).find(t=>t.id===id);const txt=`تقرير الفني: ${tech?.name||'-'}\nعدد الطلبات: ${orders.length}\n`+orders.map(o=>`${o.id} - ${o.service} - ${o.status}`).join('\n');navigator.clipboard.writeText(txt).then(()=>toast('تم نسخ التقرير'))}
 function renderTracking(){const q=get('trackInput').value.trim();if(!q){get('trackingResult').innerHTML='<div class="empty-state">اكتب رقم الطلب أو الجوال لعرض التتبع</div>';return}const o=load(KEYS.ORD).find(x=>x.id===q||x.phone===q||String(x.id).replace('#','')===q.replace('#',''));if(!o){get('trackingResult').innerHTML='<div class="empty-state">لم يتم العثور على الطلب</div>';return}const steps=['جديدة','تم الإسناد','الفني تحرك','قيد التنفيذ','مكتملة'];const idx=Math.max(0,steps.indexOf(o.status));get('trackingResult').innerHTML=`<div class="card"><div class="card-head"><h3>${safe(o.id)} - ${safe(o.service)}</h3><span class="status ${orderStatusClass(o.status)}">${safe(o.status)}</span></div><p class="muted">العميل: ${safe(o.name)} · الفني: ${safe(techName(o.techId))} · المدينة: ${safe(o.city)}</p><br><div class="timeline">${steps.map((s,i)=>`<div class="time-item"><div class="time-box"><b>${s}</b><p class="muted">${i<=idx?'تم الوصول لهذه المرحلة':'بانتظار التحديث'}</p></div><div class="time-dot">${i<=idx?'✅':'○'}</div></div>`).join('')}</div></div>`}
 function copyTrackingInfo(){const txt=get('trackingResult').innerText||'لا توجد بيانات تتبع';navigator.clipboard.writeText(txt).then(()=>toast('تم نسخ بيانات التتبع'))}
-function renderUsers(){let users=load(KEYS.USERS);if(!users.length){users=[{name:'مدير النظام',email:'admin@local',role:'Admin',active:'Active'}];localStorage.setItem(KEYS.USERS,JSON.stringify(users))}get('usersRows').innerHTML=users.map((u,i)=>`<div class="item-card"><div><b>${safe(u.name)}</b><p>${safe(u.email)} · ${safe(u.role)} · ${safe(u.active)}</p></div><button class="btn small red" onclick="deleteUser(${i})">حذف</button></div>`).join('')}
-function addUser(){const users=load(KEYS.USERS);users.push({name:get('uName').value||'مستخدم',email:get('uEmail').value||'',role:get('uRole').value,active:get('uActive').value});localStorage.setItem(KEYS.USERS,JSON.stringify(users));get('uName').value=get('uEmail').value='';renderUsers();toast('تم إضافة المستخدم')}
+async function renderUsers(){
+  const localUsers=load(KEYS.USERS);
+  const techSelect=get('uTechnicianId');
+  if(techSelect){
+    techSelect.innerHTML='<option value="">بدون ربط</option>'+load(KEYS.TECH).map(t=>`<option value="${safe(t.id)}">${safe(t.name)} - ${safe(t.skill||'')}</option>`).join('');
+  }
+  let profiles=[];
+  if(sb&&cloudEnabled){
+    try{
+      const {data,error}=await sb.from('user_profiles').select('*').order('created_at',{ascending:false});
+      if(!error&&data) profiles=data;
+    }catch(e){console.warn('profiles load',e)}
+  }
+  const rows=profiles.length?profiles.map(u=>`<div class="item-card"><div><b>${safe(u.full_name||'مستخدم')}</b><p>${safe(u.id)} · ${safe(u.role)}${u.technician_id?' · فني: '+safe(u.technician_id):''}</p></div><span class="status paid">Supabase</span></div>`).join(''):
+    (localUsers.map((u,i)=>`<div class="item-card"><div><b>${safe(u.name)}</b><p>${safe(u.email)} · ${safe(u.role)} · ${safe(u.active)}</p></div><button class="btn small red" onclick="deleteUser(${i})">حذف</button></div>`).join('')||'<div class="empty-state">لا يوجد مستخدمين ظاهرين</div>');
+  get('usersRows').innerHTML=rows;
+}
+async function addUser(){
+  const name=get('uName').value.trim()||'مستخدم';
+  const email=get('uEmail').value.trim();
+  const password=get('uPassword').value;
+  const role=get('uRole').value;
+  const active=get('uActive').value;
+  const technicianId=get('uTechnicianId')?get('uTechnicianId').value:'';
+  if(!email||!password){toast('اكتب الإيميل وكلمة المرور');return}
+  if(password.length<6){toast('كلمة المرور لا تقل عن 6 أحرف');return}
+  if(role==='technician'&&!technicianId){toast('اختار الفني المرتبط بهذا المستخدم');return}
+  if(!sb||!cloudEnabled){
+    const users=load(KEYS.USERS);users.push({name,email,role,active,technician_id:technicianId});localStorage.setItem(KEYS.USERS,JSON.stringify(users));clearUserForm();renderUsers();toast('تم حفظ المستخدم محليًا فقط');return;
+  }
+  try{
+    const {data:oldSessionData}=await sb.auth.getSession();
+    const oldSession=oldSessionData&&oldSessionData.session;
+    const {data,error}=await sb.auth.signUp({email,password});
+    if(error) throw error;
+    if(oldSession&&oldSession.access_token&&oldSession.refresh_token){
+      await sb.auth.setSession({access_token:oldSession.access_token,refresh_token:oldSession.refresh_token});
+    }
+    const userId=data.user&&data.user.id;
+    if(!userId){toast('تم إرسال دعوة/تأكيد البريد، لكن لم يرجع رقم المستخدم');return}
+    const profile={id:userId,full_name:name,role,technician_id:role==='technician'?technicianId:null};
+    const {error:profileError}=await sb.from('user_profiles').upsert(profile,{onConflict:'id'});
+    if(profileError) throw profileError;
+    clearUserForm();
+    await renderUsers();
+    toast('تم إنشاء المستخدم والصلاحية بنجاح');
+  }catch(err){
+    console.error(err);
+    alert('فشل إنشاء المستخدم: '+(err.message||'خطأ غير معروف'));
+  }
+}
+function clearUserForm(){['uName','uEmail','uPassword'].forEach(id=>{const el=get(id);if(el)el.value=''}); if(get('uRole'))get('uRole').value='client'; if(get('uActive'))get('uActive').value='Active'; if(get('uTechnicianId'))get('uTechnicianId').value=''}
 function deleteUser(i){const users=load(KEYS.USERS);users.splice(i,1);localStorage.setItem(KEYS.USERS,JSON.stringify(users));renderUsers()}
 function renderChart(){const ctx=get('revenueChart');if(!ctx||!window.Chart)return;if(chart)chart.destroy();const o=load(KEYS.ORD);const labels=['السبت','الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];const total=o.reduce((a,x)=>a+Number(x.price||0),0);const base=total?Math.max(100,total/7):100;chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'الإيراد',data:labels.map((_,i)=>Math.round(base*(.7+i/10))),borderColor:'#176df7',backgroundColor:'rgba(23,109,247,.12)',fill:true,tension:.4},{label:'مدفوع',data:labels.map((_,i)=>Math.round(base*(.45+i/14))),borderColor:'#22c783',backgroundColor:'rgba(34,199,131,.12)',fill:true,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',rtl:true,labels:{font:{family:'Tajawal'}}}},scales:{y:{grid:{color:'#edf2f7'}},x:{grid:{color:'#edf2f7'}}}}})}
 function printInvoice(id){const x=load(KEYS.ORD).find(o=>o.id===id);if(!x){toast('الفاتورة غير موجودة');return}const tax=Number(x.price||0)*0.15,subtotal=Number(x.price||0)-tax;get('printArea').innerHTML=`<div class="print-actions"><button class="btn" onclick="window.print()">طباعة</button><button class="btn light" onclick="get('printArea').style.display='none'">إغلاق</button></div><article class="invoice"><header class="inv-cover"><div><h1>الأسطول الفني</h1><p>فاتورة صيانة وخدمات منزلية</p></div><div style="text-align:left"><b>INV-${safe(String(x.id).replace('#',''))}</b><p>تاريخ الإصدار: ${safe(x.date||today())}</p><p>رقم الطلب: ${safe(x.id)}</p></div></header><main class="inv-body"><section class="inv-grid"><div class="inv-box"><h3>بيانات العميل</h3><div class="inv-line"><span>العميل</span><b>${safe(x.name)}</b></div><div class="inv-line"><span>الجوال</span><b>${safe(x.phone)}</b></div><div class="inv-line"><span>المدينة</span><b>${safe(x.city)}</b></div><div class="inv-line"><span>العنوان</span><b>${safe(x.notes||'-')}</b></div></div><div class="inv-box"><h3>بيانات الطلب</h3><div class="inv-line"><span>الخدمة</span><b>${safe(displayServices(x))}</b></div><div class="inv-line"><span>الفني</span><b>${safe(techName(x.techId))}</b></div><div class="inv-line"><span>الحالة</span><b>${safe(x.status)}</b></div><div class="inv-line"><span>الدفع</span><b>${safe(x.paymentStatus||'غير مدفوعة')}</b></div></div></section><table class="table" style="margin-top:18px"><thead><tr><th>الوصف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody><tr><td>${safe(displayServices(x))}</td><td>1</td><td>${fmt(subtotal)} ر.س</td><td>${fmt(subtotal)} ر.س</td></tr><tr><td>ضريبة/رسوم 15%</td><td>1</td><td>${fmt(tax)} ر.س</td><td>${fmt(tax)} ر.س</td></tr></tbody></table><div class="inv-total"><span>الإجمالي النهائي</span><b>${fmt(x.price)} ر.س</b></div><div class="inv-grid" style="margin-top:20px"><div class="inv-box" style="height:95px;display:flex;align-items:end;justify-content:center">توقيع العميل</div><div class="inv-box" style="height:95px;display:flex;align-items:end;justify-content:center">ختم / توقيع الإدارة</div></div></main></article>`;get('printArea').style.display='block'}
