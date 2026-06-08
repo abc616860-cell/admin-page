@@ -168,7 +168,56 @@ function normOrder(x){const services=parseServices(x.services&&x.services.length
 function fromDbOrder(r){let x=r.raw||{};const services=parseServices(r.services&&r.services.length?r.services:(x.services&&x.services.length?x.services:r.service||x.service));const serviceText=services.length?services.join('، '):(r.service||x.service||'');return {...x,id:r.id,name:r.name,phone:r.phone,service:serviceText,services:services,city:r.city,address:r.address,notes:r.notes,price:Number(r.price||0),status:r.status,date:r.date,time:r.time,techId:r.tech_id,paymentStatus:r.payment_status||'غير مدفوعة'}}
 function normTech(x){return {id:String(x.id),name:x.name||'',skill:x.skill||'',city:x.city||'',rate:Number(x.rate||0),available:x.available||'متاح للعمل',experience:Number(x.experience||0),raw:x,updated_at:new Date().toISOString()}}
 function fromDbTech(r){let x=r.raw||{};return {...x,id:r.id,name:r.name,skill:r.skill,city:r.city,rate:Number(r.rate||0),available:r.available,experience:Number(r.experience||0)}}
-async function initSupabase(){try{if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY); cloudEnabled=true;get('connectionStatus').textContent='Supabase متصل';get('dbStatus').textContent='الربط مفعل مع Supabase. إذا لم تظهر بيانات العميل تأكد من الجداول والسياسات RLS.';await refreshFromCloud(false);sb.channel('alostol-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>refreshFromCloud(false)).on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false)).subscribe();}else throw new Error('Supabase library not loaded')}catch(e){cloudEnabled=false;get('connectionStatus').textContent='محلي';get('dbStatus').textContent='النسخة تعمل محليًا الآن. الربط السحابي لم يبدأ أو يحتاج مراجعة إعدادات Supabase.'}}
+async function initSupabase(){
+  try{
+    if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){
+      sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+      cloudEnabled=true;
+      get('connectionStatus').textContent='Supabase متصل';
+      get('dbStatus').textContent='الربط مفعل مع Supabase + إشعارات مباشرة للطلبات الجديدة بدون تحديث الصفحة.';
+
+      await refreshFromCloud(false);
+      startInstantOrderNotifications();
+
+      sb.channel('alostol-tech-live')
+        .on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false))
+        .subscribe();
+
+    }else throw new Error('Supabase library not loaded')
+  }catch(e){
+    cloudEnabled=false;
+    get('connectionStatus').textContent='محلي';
+    get('dbStatus').textContent='النسخة تعمل محليًا الآن. الربط السحابي لم يبدأ أو يحتاج مراجعة إعدادات Supabase.'
+  }
+}
+
+function startInstantOrderNotifications(){
+  if(!sb||window.__ordersInstantChannelStarted)return;
+  window.__ordersInstantChannelStarted=true;
+
+  sb.channel('alostol-orders-instant-alerts')
+    .on(
+      'postgres_changes',
+      {event:'INSERT',schema:'public',table:'orders'},
+      function(payload){
+        const order=fromDbOrder(payload.new||{});
+
+        // إضافة الطلب محليًا فورًا بدون Refresh للصفحة وبدون زر تحديث
+        const orders=load(KEYS.ORD);
+        if(order.id && !orders.some(o=>String(o.id)===String(order.id))){
+          localStorage.setItem(KEYS.ORD,JSON.stringify([order,...orders]));
+        }
+
+        // إشعار فوري فقط بمجرد وصول INSERT من Supabase
+        notifyNewOrders([order]);
+        renderAll();
+      }
+    )
+    .subscribe(function(status){
+      console.log('Orders instant alerts status:',status);
+      if(status==='SUBSCRIBED')toast('تم تفعيل إشعارات الطلبات المباشرة');
+    });
+}
 async function loginSupabase(){const email=get('loginEmail').value.trim(),pass=get('loginPass').value;if(!email||!pass){showLoginError('اكتب الإيميل وكلمة المرور');return}try{if(!sb) await initSupabase(); if(!sb) throw new Error('Supabase غير متاح');const {data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error) throw error;localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'supabase',email,time:Date.now()}));get('currentUserName').textContent=email;get('loginScreen').classList.add('hidden');toast('تم تسجيل الدخول');await refreshFromCloud();}catch(e){showLoginError('فشل الدخول: '+(e.message||'راجع بيانات الحساب'))}}
 function showLoginError(msg){get('loginError').textContent=msg;get('loginError').classList.remove('hidden')}
 function localDemoLogin(){localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'local',email:'demo@local',time:Date.now()}));get('loginScreen').classList.add('hidden');get('currentUserName').textContent='مدير النظام';toast('تم الدخول المحلي')}
