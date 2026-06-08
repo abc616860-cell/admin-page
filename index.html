@@ -158,6 +158,45 @@ function clearNotificationHistory(){
   toast('تم تصفير التنبيهات');
 }
 
+
+let fastOrderNotificationTimer=null;
+let fastOrderNotificationBusy=false;
+async function checkNewOrdersForNotificationOnly(){
+  if(!sb||!cloudEnabled||fastOrderNotificationBusy)return;
+  try{
+    fastOrderNotificationBusy=true;
+    const {data,error}=await sb
+      .from('orders')
+      .select('id,name,service,city,updated_at,created_at,order_number')
+      .order('updated_at',{ascending:false})
+      .limit(8);
+    if(error) throw error;
+    const known=getKnownOrders();
+    if(!known.size){
+      setKnownOrders(new Set((data||[]).map(o=>o.id).filter(Boolean)));
+      return;
+    }
+    const fresh=(data||[]).filter(o=>o.id && !known.has(o.id));
+    if(fresh.length){
+      const fixed=fresh.map(o=>({...o,id:o.order_number||o.id}));
+      notifyNewOrders(fixed);
+      fresh.forEach(o=>known.add(o.id));
+      setKnownOrders(known);
+      renderAlerts();
+    }
+  }catch(e){
+    console.warn('fast notification check failed',e.message||e);
+  }finally{
+    fastOrderNotificationBusy=false;
+  }
+}
+function startFastOrderNotifications(){
+  if(fastOrderNotificationTimer)clearInterval(fastOrderNotificationTimer);
+  checkNewOrdersForNotificationOnly();
+  fastOrderNotificationTimer=setInterval(checkNewOrdersForNotificationOnly,3000);
+  console.log('Fast order notifications enabled every 3 seconds');
+}
+
 function fmt(n){return Number(n||0).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function uid(prefix){return prefix+'-'+Date.now().toString().slice(-7)+'-'+Math.floor(Math.random()*90+10)}
 function orderNumber(){return '#'+Math.floor(1000+Math.random()*9000)}
@@ -168,56 +207,7 @@ function normOrder(x){const services=parseServices(x.services&&x.services.length
 function fromDbOrder(r){let x=r.raw||{};const services=parseServices(r.services&&r.services.length?r.services:(x.services&&x.services.length?x.services:r.service||x.service));const serviceText=services.length?services.join('، '):(r.service||x.service||'');return {...x,id:r.id,name:r.name,phone:r.phone,service:serviceText,services:services,city:r.city,address:r.address,notes:r.notes,price:Number(r.price||0),status:r.status,date:r.date,time:r.time,techId:r.tech_id,paymentStatus:r.payment_status||'غير مدفوعة'}}
 function normTech(x){return {id:String(x.id),name:x.name||'',skill:x.skill||'',city:x.city||'',rate:Number(x.rate||0),available:x.available||'متاح للعمل',experience:Number(x.experience||0),raw:x,updated_at:new Date().toISOString()}}
 function fromDbTech(r){let x=r.raw||{};return {...x,id:r.id,name:r.name,skill:r.skill,city:r.city,rate:Number(r.rate||0),available:r.available,experience:Number(r.experience||0)}}
-async function initSupabase(){
-  try{
-    if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){
-      sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
-      cloudEnabled=true;
-      get('connectionStatus').textContent='Supabase متصل';
-      get('dbStatus').textContent='الربط مفعل مع Supabase + إشعارات مباشرة للطلبات الجديدة بدون تحديث الصفحة.';
-
-      await refreshFromCloud(false);
-      startInstantOrderNotifications();
-
-      sb.channel('alostol-tech-live')
-        .on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false))
-        .subscribe();
-
-    }else throw new Error('Supabase library not loaded')
-  }catch(e){
-    cloudEnabled=false;
-    get('connectionStatus').textContent='محلي';
-    get('dbStatus').textContent='النسخة تعمل محليًا الآن. الربط السحابي لم يبدأ أو يحتاج مراجعة إعدادات Supabase.'
-  }
-}
-
-function startInstantOrderNotifications(){
-  if(!sb||window.__ordersInstantChannelStarted)return;
-  window.__ordersInstantChannelStarted=true;
-
-  sb.channel('alostol-orders-instant-alerts')
-    .on(
-      'postgres_changes',
-      {event:'INSERT',schema:'public',table:'orders'},
-      function(payload){
-        const order=fromDbOrder(payload.new||{});
-
-        // إضافة الطلب محليًا فورًا بدون Refresh للصفحة وبدون زر تحديث
-        const orders=load(KEYS.ORD);
-        if(order.id && !orders.some(o=>String(o.id)===String(order.id))){
-          localStorage.setItem(KEYS.ORD,JSON.stringify([order,...orders]));
-        }
-
-        // إشعار فوري فقط بمجرد وصول INSERT من Supabase
-        notifyNewOrders([order]);
-        renderAll();
-      }
-    )
-    .subscribe(function(status){
-      console.log('Orders instant alerts status:',status);
-      if(status==='SUBSCRIBED')toast('تم تفعيل إشعارات الطلبات المباشرة');
-    });
-}
+async function initSupabase(){try{if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY); cloudEnabled=true;get('connectionStatus').textContent='Supabase متصل';get('dbStatus').textContent='الربط مفعل مع Supabase. إذا لم تظهر بيانات العميل تأكد من الجداول والسياسات RLS.';await refreshFromCloud(false);sb.channel('alostol-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>refreshFromCloud(false)).on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false)).subscribe();}else throw new Error('Supabase library not loaded')}catch(e){cloudEnabled=false;get('connectionStatus').textContent='محلي';get('dbStatus').textContent='النسخة تعمل محليًا الآن. الربط السحابي لم يبدأ أو يحتاج مراجعة إعدادات Supabase.'}}
 async function loginSupabase(){const email=get('loginEmail').value.trim(),pass=get('loginPass').value;if(!email||!pass){showLoginError('اكتب الإيميل وكلمة المرور');return}try{if(!sb) await initSupabase(); if(!sb) throw new Error('Supabase غير متاح');const {data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error) throw error;localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'supabase',email,time:Date.now()}));get('currentUserName').textContent=email;get('loginScreen').classList.add('hidden');toast('تم تسجيل الدخول');await refreshFromCloud();}catch(e){showLoginError('فشل الدخول: '+(e.message||'راجع بيانات الحساب'))}}
 function showLoginError(msg){get('loginError').textContent=msg;get('loginError').classList.remove('hidden')}
 function localDemoLogin(){localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'local',email:'demo@local',time:Date.now()}));get('loginScreen').classList.add('hidden');get('currentUserName').textContent='مدير النظام';toast('تم الدخول المحلي')}
@@ -368,7 +358,7 @@ function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.
 function renderAll(){if(!load(KEYS.ORD).length&&!localStorage.getItem('alostol_seeded_once')){localStorage.setItem('alostol_seeded_once','1');seedDemo();return}initAdminServiceCards();fillTechSelects();renderNumbers();renderOrders();renderTech();renderInvoices();renderAlerts();renderAssign();renderClients();renderTechPortal();renderUsers();renderChart()}
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)showPage(b.dataset.page)});
 window.addEventListener('storage',e=>{if(e.key===KEYS.ORD){const orders=load(KEYS.ORD);detectIncomingOrders(orders);renderAll();}});
-window.addEventListener('load',async()=>{requireLogin();await initSupabase();detectIncomingOrders(load(KEYS.ORD));renderAll()});
+window.addEventListener('load',async()=>{requireLogin();await initSupabase();detectIncomingOrders(load(KEYS.ORD));renderAll();startFastOrderNotifications()});
 </script>
 </body>
 </html>
