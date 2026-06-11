@@ -142,7 +142,7 @@ function showLiveAlert(order){
 function desktopNotifyOrder(order){
   try{
     if(!('Notification' in window) || Notification.permission!=='granted')return;
-    new Notification('طلب جديد - الأسطول الفني',{body:`${order.name||'عميل'} - ${order.service||'خدمة'} - ${order.city||''}`,tag:String(order.id)});
+    new Notification('طلب جديد - الاسطول الفني',{body:`${order.name||'عميل'} - ${order.service||'خدمة'} - ${order.city||''}`,tag:String(order.id)});
   }catch(e){}
 }
 function requestBrowserNotifications(){
