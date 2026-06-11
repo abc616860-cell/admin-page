@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>الاسطول الفني | لوحة التحكم الاحترافية</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https: blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; img-src 'self' https: data: blob:; connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https: blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -273,25 +273,166 @@ async function loadLoggedUserProfile(user,email){
   return profile;
 }
 async function restoreSessionProfile(){
-  const sess=localStorage.getItem(KEYS.SESSION);
-  if(!sess){applyRolePermissions('viewer',null);return null;}
-  try{
-    const parsed=JSON.parse(sess);
-    if(parsed.mode==='system'){get('currentUserName').textContent='مدير النظام';applyRolePermissions('admin',null);return {role:'admin'};}
-  }catch(e){}
   if(sb&&cloudEnabled){
     try{
       const {data}=await sb.auth.getUser();
-      if(data&&data.user) return await loadLoggedUserProfile(data.user,data.user.email);
+      if(data&&data.user){
+        localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'supabase',email:data.user.email,time:Date.now()}));
+        return await loadLoggedUserProfile(data.user,data.user.email);
+      }
     }catch(e){console.warn('restore profile failed',e.message||e)}
   }
+  localStorage.removeItem(KEYS.SESSION);
+  applyRolePermissions('viewer',null);
+  get('loginScreen')?.classList.remove('hidden');
   return null;
 }
 function canOpenPage(id){return allowedPagesForRole(currentUserRole).includes(id)}
 
-async function initSupabase(){try{if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY); cloudEnabled=true;get('connectionStatus').textContent='Supabase متصل';get('dbStatus').textContent='الربط مفعل مع Supabase. إذا لم تظهر بيانات العميل تأكد من الجداول والسياسات RLS.';await refreshFromCloud(false);sb.channel('alostol-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>refreshFromCloud(false)).on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false)).subscribe();}else throw new Error('Supabase library not loaded')}catch(e){cloudEnabled=false;get('connectionStatus').textContent='متصل';get('dbStatus').textContent='تعذر الاتصال بالخادم. يرجى مراجعة إعدادات الاتصال.'}}
+async function initSupabase(){try{if(window.supabase&&CONFIG.SUPABASE_URL.startsWith('http')){sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY); cloudEnabled=true;get('connectionStatus').textContent='Supabase متصل';get('dbStatus').textContent='الربط مفعل مع Supabase. إذا لم تظهر بيانات العميل تأكد من الجداول والسياسات RLS.';await refreshFromCloud(false);sb.channel('alostol-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>refreshFromCloud(false)).on('postgres_changes',{event:'*',schema:'public',table:'technicians'},()=>refreshFromCloud(false)).subscribe();}else throw new Error('Supabase library not loaded')}catch(e){cloudEnabled=false;get('connectionStatus').textContent='Supabase غير متصل';get('dbStatus').textContent='تعذر الاتصال بـ Supabase. تسجيل الدخول المحلي غير مفعل في نسخة البيع.'}}
 async function loginSupabase(){const email=get('loginEmail').value.trim(),pass=get('loginPass').value;if(!email||!pass){showLoginError('اكتب الإيميل وكلمة المرور');return}try{if(!sb) await initSupabase(); if(!sb) throw new Error('Supabase غير متاح');const {data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error) throw error;localStorage.setItem(KEYS.SESSION,JSON.stringify({mode:'supabase',email,time:Date.now()}));await loadLoggedUserProfile(data.user,email);get('loginScreen').classList.add('hidden');toast('تم تسجيل الدخول');await refreshFromCloud();if(currentUserRole==='technician')showPage('techPortal');}catch(e){showLoginError('فشل الدخول: '+(e.message||'راجع بيانات الحساب'))}}
 function showLoginError(msg){get('loginError').textContent=msg;get('loginError').classList.remove('hidden')}
+
+
+
+/* ===== Runtime fixes: core data helpers, Supabase fallback, login/logout ===== */
+const ADMIN_SERVICES=[
+  ['صيانة مكيفات','❄️'],['غسيل مكيفات','🧼'],['تركيب مكيفات','🛠️'],
+  ['صيانة ثلاجات','🧊'],['صيانة غسالات','🧺'],['صيانة أفران','🔥'],
+  ['صيانة مجففات','♨️'],['صيانة مكانس','🧹'],['صيانة خلاطات','⚙️']
+];
+
+function parseServices(value){
+  if(Array.isArray(value)) return value.map(v=>String(v||'').trim()).filter(Boolean);
+  if(value==null) return [];
+  return String(value)
+    .split(/[,،\n|]+/)
+    .map(v=>v.trim())
+    .filter(Boolean)
+    .filter((v,i,a)=>a.indexOf(v)===i);
+}
+
+function fillTechSelects(){
+  const techs=load(KEYS.TECH);
+  const options='<option value="">بدون إسناد</option>'+techs.map(t=>`<option value="${safe(t.id)}">${safe(t.name)} - ${safe(t.skill||'')}</option>`).join('');
+  ['oTech','portalTech'].forEach(id=>{
+    const el=get(id); if(!el) return;
+    const old=el.value;
+    el.innerHTML=id==='portalTech'
+      ? '<option value="">اختر الفني</option>'+techs.map(t=>`<option value="${safe(t.id)}">${safe(t.name)} - ${safe(t.skill||'')}</option>`).join('')
+      : options;
+    if(old) el.value=old;
+    if(id==='portalTech'&&isTechnicianRole()&&currentTechnicianId){el.value=currentTechnicianId;el.disabled=true;}
+  });
+  const uTech=get('uTechnicianId');
+  if(uTech){
+    const old=uTech.value;
+    uTech.innerHTML='<option value="">بدون ربط</option>'+techs.map(t=>`<option value="${safe(t.id)}">${safe(t.name)} - ${safe(t.skill||'')}</option>`).join('');
+    if(old) uTech.value=old;
+  }
+}
+
+async function refreshFromCloud(showToast=true){
+  if(!sb||!cloudEnabled){renderAll();return false;}
+  try{
+    pulling=true;
+    const [{data:orders,error:ordersError},{data:techs,error:techsError}]=await Promise.all([
+      sb.from('orders').select('*').order('updated_at',{ascending:false}),
+      sb.from('technicians').select('*').order('updated_at',{ascending:false})
+    ]);
+    if(ordersError) throw ordersError;
+    if(techsError) throw techsError;
+    const localOrders=(orders||[]).map(fromDbOrder);
+    const localTechs=(techs||[]).map(fromDbTech);
+    localStorage.setItem(KEYS.ORD,JSON.stringify(localOrders));
+    localStorage.setItem(KEYS.TECH,JSON.stringify(localTechs));
+    detectIncomingOrders(localOrders);
+    pulling=false;
+    renderAll();
+    if(showToast) toast('تم تحديث البيانات');
+    return true;
+  }catch(e){
+    pulling=false;
+    const st=get('connectionStatus'); if(st) st.textContent='Supabase غير متصل';
+    const db=get('dbStatus'); if(db) db.textContent='تعذر جلب بيانات Supabase. لا يوجد وضع دخول محلي في نسخة البيع. السبب: '+(e.message||e);
+    console.warn('refreshFromCloud failed',e.message||e);
+    renderAll();
+    return false;
+  }
+}
+
+async function syncOrders(orders){
+  if(!sb||!cloudEnabled||pulling) return;
+  try{
+    const rows=(orders||[]).map(normOrder);
+    if(rows.length){
+      const {error}=await sb.from('orders').upsert(rows,{onConflict:'id'});
+      if(error) throw error;
+    }
+  }catch(e){console.warn('syncOrders failed',e.message||e)}
+}
+
+async function syncTechs(techs){
+  if(!sb||!cloudEnabled||pulling) return;
+  try{
+    const rows=(techs||[]).map(normTech);
+    if(rows.length){
+      const {error}=await sb.from('technicians').upsert(rows,{onConflict:'id'});
+      if(error) throw error;
+    }
+  }catch(e){console.warn('syncTechs failed',e.message||e)}
+}
+
+async function deleteOrderCloud(id){
+  if(!sb||!cloudEnabled) return;
+  try{const {error}=await sb.from('orders').delete().eq('id',id); if(error) throw error;}catch(e){console.warn('deleteOrderCloud failed',e.message||e)}
+}
+
+async function deleteTechCloud(id){
+  if(!sb||!cloudEnabled) return;
+  try{const {error}=await sb.from('technicians').delete().eq('id',id); if(error) throw error;}catch(e){console.warn('deleteTechCloud failed',e.message||e)}
+}
+
+async function requireLogin(){
+  if(!sb||!cloudEnabled){
+    localStorage.removeItem(KEYS.SESSION);
+    get('loginScreen')?.classList.remove('hidden');
+    showLoginError('يجب الاتصال بـ Supabase لتسجيل الدخول. لا يوجد دخول محلي في هذه النسخة.');
+    applyRolePermissions('viewer',null);
+    return false;
+  }
+  try{
+    const {data}=await sb.auth.getUser();
+    if(data&&data.user){
+      get('loginScreen')?.classList.add('hidden');
+      await loadLoggedUserProfile(data.user,data.user.email);
+      return true;
+    }
+  }catch(e){console.warn('requireLogin failed',e.message||e)}
+  localStorage.removeItem(KEYS.SESSION);
+  get('loginScreen')?.classList.remove('hidden');
+  applyRolePermissions('viewer',null);
+  return false;
+}
+
+async function logout(){
+  try{if(sb) await sb.auth.signOut();}catch(e){}
+  localStorage.removeItem(KEYS.SESSION);
+  currentUserRole='viewer';currentTechnicianId=null;currentUserProfile=null;
+  get('loginEmail')&&(get('loginEmail').value='');
+  get('loginPass')&&(get('loginPass').value='');
+  get('loginError')?.classList.add('hidden');
+  get('loginScreen')?.classList.remove('hidden');
+  toast('تم تسجيل الخروج');
+}
+
+async function clearAllData(){
+  if(!confirm('مسح كل الطلبات والفنيين من شاشة النظام؟')) return;
+  save(KEYS.ORD,[]); save(KEYS.TECH,[]);
+  localStorage.removeItem(KEYS.ALERTS); localStorage.removeItem(KEYS.NEW); localStorage.removeItem(KEYS.KNOWN);
+  renderAll(); toast('تم مسح البيانات من الشاشة');
+}
+/* ===== End runtime fixes ===== */
 
 function updateAdminServiceSummary(){
   const selected=parseServices(get('oService')?.value);
@@ -410,7 +551,6 @@ function copyTechReport(){const id=(isTechnicianRole()&&currentTechnicianId)?cur
 function renderTracking(){const q=get('trackInput').value.trim();if(!q){get('trackingResult').innerHTML='<div class="empty-state">اكتب رقم الطلب أو الجوال لعرض التتبع</div>';return}const o=roleFilteredOrders(load(KEYS.ORD)).find(x=>x.id===q||x.phone===q||String(x.id).replace('#','')===q.replace('#',''));if(!o){get('trackingResult').innerHTML='<div class="empty-state">لم يتم العثور على الطلب</div>';return}const steps=['جديدة','تم الإسناد','الفني تحرك','قيد التنفيذ','مكتملة'];const idx=Math.max(0,steps.indexOf(o.status));get('trackingResult').innerHTML=`<div class="card"><div class="card-head"><h3>${safe(o.id)} - ${safe(o.service)}</h3><span class="status ${orderStatusClass(o.status)}">${safe(o.status)}</span></div><p class="muted">العميل: ${safe(o.name)} · الفني: ${safe(techName(o.techId))} · المدينة: ${safe(o.city)}</p><br><div class="timeline">${steps.map((s,i)=>`<div class="time-item"><div class="time-box"><b>${s}</b><p class="muted">${i<=idx?'تم الوصول لهذه المرحلة':'بانتظار التحديث'}</p></div><div class="time-dot">${i<=idx?'✅':'○'}</div></div>`).join('')}</div></div>`}
 function copyTrackingInfo(){const txt=get('trackingResult').innerText||'لا توجد بيانات تتبع';navigator.clipboard.writeText(txt).then(()=>toast('تم نسخ بيانات التتبع'))}
 async function renderUsers(){
-  const localUsers=load(KEYS.USERS);
   const techSelect=get('uTechnicianId');
   if(techSelect){
     techSelect.innerHTML='<option value="">بدون ربط</option>'+load(KEYS.TECH).map(t=>`<option value="${safe(t.id)}">${safe(t.name)} - ${safe(t.skill||'')}</option>`).join('');
@@ -422,8 +562,7 @@ async function renderUsers(){
       if(!error&&data) profiles=data;
     }catch(e){console.warn('profiles load',e)}
   }
-  const rows=profiles.length?profiles.map(u=>`<div class="item-card"><div><b>${safe(u.full_name||'مستخدم')}</b><p>${safe(u.id)} · ${safe(u.role)}${u.technician_id?' · فني: '+safe(u.technician_id):''}</p></div><span class="status paid">Supabase</span></div>`).join(''):
-    (localUsers.map((u,i)=>`<div class="item-card"><div><b>${safe(u.name)}</b><p>${safe(u.email)} · ${safe(u.role)} · ${safe(u.active)}</p></div><button class="btn small red" onclick="deleteUser(${i})">حذف</button></div>`).join('')||'<div class="empty-state">لا يوجد مستخدمين ظاهرين</div>');
+  const rows=profiles.length?profiles.map(u=>`<div class="item-card"><div><b>${safe(u.full_name||'مستخدم')}</b><p>${safe(u.id)} · ${safe(u.role)}${u.technician_id?' · فني: '+safe(u.technician_id):''}</p></div><span class="status paid">Supabase</span></div>`).join(''):'<div class="empty-state">لا يوجد مستخدمين ظاهرين من Supabase</div>';
   get('usersRows').innerHTML=rows;
 }
 async function addUser(){
@@ -437,7 +576,8 @@ async function addUser(){
   if(password.length<6){toast('كلمة المرور لا تقل عن 6 أحرف');return}
   if(role==='technician'&&!technicianId){toast('اختار الفني المرتبط بهذا المستخدم');return}
   if(!sb||!cloudEnabled){
-    const users=load(KEYS.USERS);users.push({name,email,role,active,technician_id:technicianId});localStorage.setItem(KEYS.USERS,JSON.stringify(users));clearUserForm();renderUsers();toast('تم حفظ المستخدم متصلًا فقط');return;
+    alert('لا يمكن إنشاء مستخدم بدون اتصال Supabase.');
+    return;
   }
   try{
     const {data:oldSessionData}=await sb.auth.getSession();
@@ -468,10 +608,10 @@ function exportBackup(){const data={orders:load(KEYS.ORD),techs:load(KEYS.TECH),
 function importBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.orders)save(KEYS.ORD,d.orders);if(d.techs)save(KEYS.TECH,d.techs);if(d.users)localStorage.setItem(KEYS.USERS,JSON.stringify(d.users));renderAll();toast('تم استيراد النسخة')}catch(err){toast('ملف غير صحيح')}};r.readAsText(f)}
 function toggleTheme(){document.body.style.filter=document.body.style.filter?'':'contrast(1.02) saturate(1.05)'}
 function showPage(id){if(!canOpenPage(id)){toast('غير مسموح لهذا الحساب بفتح هذه الصفحة');id=allowedPagesForRole(currentUserRole)[0]||'techPortal';}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const page=get(id);if(page)page.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='techPortal')renderTechPortal();if(id==='clientTracking')renderTracking();window.scrollTo({top:0,behavior:'smooth'})}
-function renderAll(){if(!load(KEYS.ORD).length&&!localStorage.getItem('alostol_seeded_once')){localStorage.setItem('alostol_seeded_once','1');seedDemo();return}initAdminServiceCards();fillTechSelects();renderNumbers();renderOrders();renderTech();renderInvoices();renderAlerts();renderAssign();renderClients();renderTechPortal();if(!isTechnicianRole())renderUsers();renderChart();applyRolePermissions(currentUserRole,currentTechnicianId)}
+function renderAll(){initAdminServiceCards();fillTechSelects();renderNumbers();renderOrders();renderTech();renderInvoices();renderAlerts();renderAssign();renderClients();renderTechPortal();if(!isTechnicianRole())renderUsers();renderChart();applyRolePermissions(currentUserRole,currentTechnicianId)}
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)showPage(b.dataset.page)});
 window.addEventListener('storage',e=>{if(e.key===KEYS.ORD){const orders=load(KEYS.ORD);detectIncomingOrders(orders);renderAll();}});
-window.addEventListener('load',async()=>{await initSupabase();requireLogin();await restoreSessionProfile();detectIncomingOrders(roleFilteredOrders(load(KEYS.ORD)));renderAll();if(currentUserRole==='technician')showPage('techPortal');startFastOrderNotifications()});
+window.addEventListener('load',async()=>{await initSupabase();const logged=await requireLogin();if(logged){await restoreSessionProfile();await refreshFromCloud(false);detectIncomingOrders(roleFilteredOrders(load(KEYS.ORD)));renderAll();if(currentUserRole==='technician')showPage('techPortal');startFastOrderNotifications();}else{renderAll();}});
 </script>
 </body>
 </html>
