@@ -793,42 +793,45 @@ async function renderUsers(){
   const rows=profiles.length?profiles.map(u=>`<div class="item-card"><div><b>${safe(u.full_name||'مستخدم')}</b><p>${safe(u.id)} · ${safe(u.role)}${u.company_id?' · الشركة: '+safe(companyName(u.company_id)):''}${u.technician_id?' · فني: '+safe(u.technician_id):''}</p></div><span class="status paid">Supabase</span></div>`).join(''):'<div class="empty-state">لا يوجد مستخدمين ظاهرين من Supabase</div>';
   get('usersRows').innerHTML=rows;
 }
-async function addUser(){
-  const name=get('uName').value.trim()||'مستخدم';
-  const email=get('uEmail').value.trim();
-  const password=get('uPassword').value;
-  const role=get('uRole').value;
-  const active=get('uActive').value;
-  const technicianId=get('uTechnicianId')?get('uTechnicianId').value:'';
-  const companyId=get('uCompanyId')?get('uCompanyId').value:'';
-  if(!email||!password){toast('اكتب الإيميل وكلمة المرور');return}
-  if(password.length<6){toast('كلمة المرور لا تقل عن 6 أحرف');return}
+async async function addUser(){
+  if(currentUserRole!=='admin'){toast('الأدمن فقط يمكنه إنشاء الحسابات');return}
+  const name=get('uName').value.trim(), email=get('uEmail').value.trim().toLowerCase();
+  const password=get('uPassword').value, role=get('uRole').value;
+  const technicianId=get('uTechnicianId')?.value||'', companyId=get('uCompanyId')?.value||'';
+  if(!name||!email||!password){toast('اكتب الاسم والإيميل وكلمة المرور');return}
+  if(password.length<8){toast('كلمة المرور يجب ألا تقل عن 8 أحرف');return}
+
+  if(role==='company_manager'){
+    if(!companyId){toast('اختار الشركة المرتبطة بالحساب');return}
+    try{
+      const {data:s}=await sb.auth.getSession();
+      const token=s?.session?.access_token;
+      if(!token)throw new Error('جلسة الأدمن غير صالحة');
+      const r=await fetch(`${SUPABASE_URL}/functions/v1/bright-responder`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'apikey':SUPABASE_ANON},
+        body:JSON.stringify({email,password,full_name:name,company_id:companyId})
+      });
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.success)throw new Error(j.error||`HTTP ${r.status}`);
+      ['uName','uEmail','uPassword'].forEach(id=>get(id).value='');
+      get('uRole').value='viewer'; if(get('uCompanyId'))get('uCompanyId').value='';
+      toast('تم إنشاء حساب الشركة وربطه بنجاح');
+      await syncAll(); return;
+    }catch(e){console.error(e);toast('فشل إنشاء حساب الشركة: '+(e?.message||e));return}
+  }
+
   if(role==='technician'&&!technicianId){toast('اختار الفني المرتبط بهذا المستخدم');return}
-  if(role==='company_manager'&&!companyId){toast('اختار الشركة المرتبطة بمدير الشركة');return}
-  if(!sb||!cloudEnabled){
-    alert('لا يمكن إنشاء مستخدم بدون اتصال Supabase.');
-    return;
-  }
   try{
-    const {data:oldSessionData}=await sb.auth.getSession();
-    const oldSession=oldSessionData&&oldSessionData.session;
-    const {data,error}=await sb.auth.signUp({email,password});
-    if(error) throw error;
-    if(oldSession&&oldSession.access_token&&oldSession.refresh_token){
-      await sb.auth.setSession({access_token:oldSession.access_token,refresh_token:oldSession.refresh_token});
-    }
-    const userId=data.user&&data.user.id;
-    if(!userId){toast('تم إرسال دعوة/تأكيد البريد، لكن لم يرجع رقم المستخدم');return}
-    const profile={id:userId,full_name:name,role,technician_id:role==='technician'?technicianId:null,company_id:role==='company_manager'?companyId:null};
-    const {error:profileError}=await sb.from('user_profiles').upsert(profile,{onConflict:'id'});
-    if(profileError) throw profileError;
-    clearUserForm();
-    await renderUsers();
-    toast('تم إنشاء المستخدم والصلاحية بنجاح');
-  }catch(err){
-    console.error(err);
-    alert('فشل إنشاء المستخدم: '+(err.message||'خطأ غير معروف'));
-  }
+    const {data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});
+    if(error)throw error;
+    const userId=data.user?.id;if(!userId)throw new Error('لم يتم إنشاء المستخدم');
+    const {error:pErr}=await sb.from('user_profiles').upsert({
+      id:userId,full_name:name,role,technician_id:role==='technician'?technicianId:null,company_id:null
+    });
+    if(pErr)throw pErr;
+    toast('تم إنشاء المستخدم'); await syncAll();
+  }catch(e){console.error(e);toast('فشل إنشاء المستخدم: '+(e?.message||e))}
 }
 function clearUserForm(){['uName','uEmail','uPassword'].forEach(id=>{const el=get(id);if(el)el.value=''}); if(get('uRole'))get('uRole').value='client'; if(get('uActive'))get('uActive').value='Active'; if(get('uTechnicianId'))get('uTechnicianId').value=''; if(get('uCompanyId'))get('uCompanyId').value=''}
 function deleteUser(i){const users=load(KEYS.USERS);users.splice(i,1);localStorage.setItem(KEYS.USERS,JSON.stringify(users));renderUsers()}
