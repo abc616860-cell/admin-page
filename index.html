@@ -380,30 +380,41 @@ function inferRegion(city){
 
 /* ===== Companies & company technicians ===== */
 function getCompanies(){ return load(KEYS.COMP); }
+function newUuid(){return (crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&3|8);return v.toString(16)})}
 function saveCompanies(arr){ localStorage.setItem(KEYS.COMP,JSON.stringify(arr||[])); renderCompanies(); fillCompanySelects(); }
+async function syncCompanyCloud(company){
+  if(!sb||!cloudEnabled)return true;
+  const row={id:company.id,name:company.name,phone:company.phone||null,city:company.city||null};
+  const {error}=await sb.from('companies').upsert(row,{onConflict:'id'});
+  if(error){console.error('syncCompanyCloud',error);toast('تعذر حفظ الشركة في Supabase: '+error.message);return false}
+  return true;
+}
+async function deleteCompanyCloud(id){if(!sb||!cloudEnabled)return;const {error}=await sb.from('companies').delete().eq('id',id);if(error)toast('تعذر حذف الشركة من Supabase: '+error.message)}
 
 function clearCompanyForm(){
   ['editingCompanyId','cName','cCity','cPhone','cNotes'].forEach(id=>{const e=get(id);if(e)e.value='';});
   if(get('cStatus')) get('cStatus').value='نشطة'; if(get('cRegion'))get('cRegion').value='المنطقة الجنوبية'; fillCompanyCities();
   if(get('companyFormTitle')) get('companyFormTitle').textContent='إضافة شركة';
 }
-function saveCompanyForm(){
+async function saveCompanyForm(){
   const name=get('cName')?.value.trim();
   if(!name){toast('اكتب اسم الشركة');return;}
   const arr=getCompanies();
   const edit=get('editingCompanyId')?.value;
-  const row={id:edit||uid('COMP'),name,region:get('cRegion')?.value||'المنطقة الجنوبية',city:get('cCity')?.value||'',phone:get('cPhone')?.value.trim()||'',status:get('cStatus')?.value||'نشطة',notes:get('cNotes')?.value.trim()||''};
+  const row={id:edit||newUuid(),name,region:get('cRegion')?.value||'المنطقة الجنوبية',city:get('cCity')?.value||'',phone:get('cPhone')?.value.trim()||'',status:get('cStatus')?.value||'نشطة',notes:get('cNotes')?.value.trim()||''};
+  if(!(await syncCompanyCloud(row)))return;
   const i=arr.findIndex(x=>String(x.id)===String(edit));
   if(i>=0) arr[i]=row; else arr.unshift(row);
-  saveCompanies(arr); clearCompanyForm(); renderAll(); toast(i>=0?'تم تعديل الشركة':'تمت إضافة الشركة');
+  saveCompanies(arr); clearCompanyForm(); renderAll(); toast(i>=0?'تم تعديل الشركة وحفظها في Supabase':'تمت إضافة الشركة وحفظها في Supabase');
 }
 function editCompany(id){
   const c=getCompanies().find(x=>String(x.id)===String(id)); if(!c)return;
   get('editingCompanyId').value=c.id; get('cName').value=c.name||''; if(get('cRegion'))get('cRegion').value=c.region||inferRegion(c.city||''); fillCompanyCities(c.city||''); get('cPhone').value=c.phone||''; get('cStatus').value=c.status||'نشطة'; get('cNotes').value=c.notes||'';
   get('companyFormTitle').textContent='تعديل الشركة'; showPage('companies');
 }
-function deleteCompany(id){
+async function deleteCompany(id){
   if(!confirm('حذف الشركة؟ الفنيون سيبقون محفوظين ولكن بدون شركة.'))return;
+  await deleteCompanyCloud(id);
   saveCompanies(getCompanies().filter(x=>String(x.id)!==String(id)));
   const techs=load(KEYS.TECH).map(t=>String(t.companyId||'')===String(id)?{...t,companyId:''}:t);
   save(KEYS.TECH,techs); renderAll(); toast('تم حذف الشركة');
@@ -508,16 +519,22 @@ async function refreshFromCloud(showToast=true){
   if(!sb||!cloudEnabled){renderAll();return false;}
   try{
     pulling=true;
-    const [{data:orders,error:ordersError},{data:techs,error:techsError}]=await Promise.all([
+    const [{data:orders,error:ordersError},{data:techs,error:techsError},{data:companies,error:companiesError}]=await Promise.all([
       sb.from('orders').select('*').order('updated_at',{ascending:false}),
-      sb.from('technicians').select('*').order('updated_at',{ascending:false})
+      sb.from('technicians').select('*').order('updated_at',{ascending:false}),
+      sb.from('companies').select('id,name,phone,city')
     ]);
     if(ordersError) throw ordersError;
     if(techsError) throw techsError;
+    if(companiesError) throw companiesError;
     const localOrders=(orders||[]).map(fromDbOrder);
     const localTechs=(techs||[]).map(fromDbTech);
     localStorage.setItem(KEYS.ORD,JSON.stringify(localOrders));
     localStorage.setItem(KEYS.TECH,JSON.stringify(localTechs));
+    const oldCompanies=getCompanies();
+    const oldMap=new Map(oldCompanies.map(c=>[String(c.id),c]));
+    const cloudCompanies=(companies||[]).map(c=>({...oldMap.get(String(c.id)),id:c.id,name:c.name||'',phone:c.phone||'',city:c.city||'',region:oldMap.get(String(c.id))?.region||inferRegion(c.city||''),status:oldMap.get(String(c.id))?.status||'نشطة',notes:oldMap.get(String(c.id))?.notes||''}));
+    localStorage.setItem(KEYS.COMP,JSON.stringify(cloudCompanies));
     detectIncomingOrders(localOrders);
     pulling=false;
     renderAll();
