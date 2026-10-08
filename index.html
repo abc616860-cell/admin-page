@@ -194,10 +194,25 @@ function requestBrowserNotifications(){
   if(!('Notification' in window)){toast('المتصفح لا يدعم إشعارات سطح المكتب');return}
   Notification.requestPermission().then(p=>toast(p==='granted'?'تم تفعيل إشعارات المتصفح':'لم يتم السماح بالإشعارات'));
 }
+// Send customer confirmation when a new cloud order is detected while dashboard is open.
+// Persistent dedup prevents repeated sends from polling/realtime refreshes.
+const WA_NOTIFIED_KEY='alostol_wa_notified_orders_v1';
+function incomingWhatsAppOnce(order){
+  const key=String(order?.id||'');
+  if(!key || !order?.phone)return;
+  let sent=[];try{sent=JSON.parse(localStorage.getItem(WA_NOTIFIED_KEY)||'[]')}catch{}
+  if(sent.includes(key))return;
+  // Reserve before async call to avoid concurrent polling duplicates.
+  sent.push(key);localStorage.setItem(WA_NOTIFIED_KEY,JSON.stringify(sent.slice(-1000)));
+  sendOrderWhatsAppNotification(order,'created').then(ok=>{
+    if(!ok){let list=[];try{list=JSON.parse(localStorage.getItem(WA_NOTIFIED_KEY)||'[]')}catch{}
+      localStorage.setItem(WA_NOTIFIED_KEY,JSON.stringify(list.filter(x=>x!==key)));}
+  });
+}
 function notifyNewOrders(newOrders){
   if(!newOrders||!newOrders.length)return;
   const ids=getNewOrderIds();
-  newOrders.forEach(o=>{ids.add(o.id);addAlertRecord(o);});
+  newOrders.forEach(o=>{ids.add(o.id);addAlertRecord(o);incomingWhatsAppOnce(o);});
   setNewOrderIds(ids);
   const first=newOrders[0];
   toast(`وصل ${newOrders.length} طلب جديد`);
@@ -234,7 +249,7 @@ async function checkNewOrdersForNotificationOnly(){
     fastOrderNotificationBusy=true;
     const {data,error}=await sb
       .from('orders')
-      .select('id,name,service,city,updated_at,created_at,order_number')
+      .select('id,name,phone,service,city,updated_at,created_at,order_number')
       .order('updated_at',{ascending:false})
       .limit(8);
     if(error) throw error;
@@ -662,35 +677,44 @@ function displayServices(x){
   return list.length?list.join('، '):(x?.service||'-');
 }
 
-// WhatsApp notifications: invokes the server-side Edge Function; no provider secrets in the browser.
-async function sendOrderWhatsAppNotification(order, eventType='created') {
-  if (!sb || !cloudEnabled) { toast('واتساب: Supabase غير متصل'); return; }
-  if (!order?.phone) { toast('واتساب: رقم جوال العميل غير موجود'); return; }
-  try {
-    const {data:{session},error:sessionError}=await sb.auth.getSession();
-    if (sessionError || !session) { toast('واتساب: سجّل الدخول أولاً'); return; }
-    const message=eventType==='created'
-      ? `مرحباً ${order.name||'بك'}، تم تسجيل طلبك لدى الأسطول الفني. رقم الطلب: ${order.id}. الخدمة: ${order.service||''}. سنوافيك بالتحديثات.`
-      : `تحديث طلب الأسطول الفني رقم ${order.id}: الحالة ${order.status||'تم التحديث'}.`;
-    const {data,error}=await sb.functions.invoke('send-whatsapp',{
-      body:{phone:order.phone,message,order_id:order.id,event_type:eventType}
+// Same direct fetch pattern as the working Ebd aa Ammar dashboard.
+// Credentials stay in the Supabase Edge Function Secrets, never in HTML.
+function formatWhatsAppPhone(value){
+  let p=String(value||'').replace(/\D/g,'');
+  if(p.startsWith('00'))p=p.slice(2);
+  if(/^05\d{8}$/.test(p))return '966'+p.slice(1);
+  if(/^5\d{8}$/.test(p))return '966'+p;
+  if(/^01\d{9}$/.test(p))return '20'+p.slice(1);
+  return p;
+}
+async function sendOrderWhatsAppNotification(order,eventType='created'){
+  if(!CONFIG.SUPABASE_URL){toast('واتساب: رابط Supabase غير موجود');return false;}
+  const phone=formatWhatsAppPhone(order?.phone);
+  if(!phone){toast('واتساب: رقم العميل غير موجود');return false;}
+  const message=eventType==='created'
+    ? `مرحباً ${order.name||'بك'}،\nتم تسجيل طلبك لدى الأسطول الفني.\nرقم الطلب: ${order.id}\nالخدمة: ${order.service||''}\nسنوافيك بالتحديثات.`
+    : `الأسطول الفني\nتحديث الطلب ${order.id}\nالحالة: ${order.status||'تم التحديث'}`;
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const headers={'Content-Type':'application/json','apikey':CONFIG.SUPABASE_ANON_KEY};
+    // Use a real user JWT when present; no provider token is exposed in the browser.
+    if(session?.access_token)headers.Authorization='Bearer '+session.access_token;
+    const res=await fetch(CONFIG.SUPABASE_URL+'/functions/v1/send-whatsapp',{
+      method:'POST',headers,body:JSON.stringify({phone,message})
     });
-    if(error){
-      let detail=error.message||'فشل استدعاء وظيفة الإرسال';
-      try { const r=await error.context?.json?.(); if(r?.error) detail=r.error; } catch(_){}
-      throw new Error(detail);
-    }
-    if(data?.ok===true || data?.success===true){
-      toast('تم قبول إرسال رسالة واتساب');
-    } else {
-      throw new Error(data?.error||data?.message||'خدمة واتساب لم تؤكد الإرسال');
-    }
+    const raw=await res.text();
+    let data;try{data=JSON.parse(raw)}catch{data={ok:false,error:raw.slice(0,300)}}
+    console.log('send-whatsapp HTTP:',res.status,'response:',data);
+    if(!res.ok||data?.ok!==true)throw new Error(String(data?.error||data?.message||'فشل الإرسال HTTP '+res.status));
+    toast('واتساب: تم قبول طلب الإرسال');
+    return true;
   }catch(e){
-    console.error('WhatsApp notification failed:',e);
-    toast('واتساب: '+(e.message||'فشل الإرسال'));
+    console.error('send-whatsapp error:',e);
+    toast('واتساب: '+(e.message||'تعذر الإرسال'));
+    return false;
   }
 }
-function saveOrderForm(){let arr=load(KEYS.ORD),edit=get('editingOrderId').value;const selectedServices=getSelectedAdminServices();const serviceText=selectedServices.join('، ');if(!selectedServices.length){toast('اختار خدمة واحدة على الأقل');return}const order={id:edit||orderNumber(),name:get('oName').value.trim()||'عميل جديد',phone:get('oPhone').value.trim(),service:serviceText,services:selectedServices,city:get('oCity').value,price:+get('oPrice').value||0,status:get('oStatus').value,date:today(),notes:get('oNotes').value.trim(),paymentStatus:get('oPayment').value,techId:get('oTech').value||null}; if(edit)arr=arr.map(x=>x.id===edit?{...x,...order}:x); else arr.unshift(order);save(KEYS.ORD,arr);const known=getKnownOrders();known.add(order.id);setKnownOrders(known);clearOrderForm();renderAll();toast(edit?'تم تعديل الطلب':'تم حفظ الطلب');if(!edit)sendOrderWhatsAppNotification(order,'created')}
+function saveOrderForm(){let arr=load(KEYS.ORD),edit=get('editingOrderId').value;const selectedServices=getSelectedAdminServices();const serviceText=selectedServices.join('، ');if(!selectedServices.length){toast('اختار خدمة واحدة على الأقل');return}const order={id:edit||orderNumber(),name:get('oName').value.trim()||'عميل جديد',phone:get('oPhone').value.trim(),service:serviceText,services:selectedServices,city:get('oCity').value,price:+get('oPrice').value||0,status:get('oStatus').value,date:today(),notes:get('oNotes').value.trim(),paymentStatus:get('oPayment').value,techId:get('oTech').value||null}; if(edit)arr=arr.map(x=>x.id===edit?{...x,...order}:x); else arr.unshift(order);save(KEYS.ORD,arr);const known=getKnownOrders();known.add(order.id);setKnownOrders(known);clearOrderForm();renderAll();toast(edit?'تم تعديل الطلب':'تم حفظ الطلب');if(!edit){const k=String(order.id);let ids=[];try{ids=JSON.parse(localStorage.getItem(WA_NOTIFIED_KEY)||'[]')}catch{};if(!ids.includes(k)){ids.push(k);localStorage.setItem(WA_NOTIFIED_KEY,JSON.stringify(ids.slice(-1000)))}sendOrderWhatsAppNotification(order,'created')}}
 function editOrder(id){markOrderSeen(id);const x=roleFilteredOrders(load(KEYS.ORD)).find(o=>o.id===id);if(!x)return;showPage('orders');get('editingOrderId').value=x.id;get('orderFormTitle').textContent='تعديل طلب '+x.id;get('oName').value=x.name||'';get('oPhone').value=x.phone||'';setAdminServiceSelection((x.services&&x.services.length)?x.services:(x.service||'صيانة مكيفات'));get('oCity').value=x.city||'خميس مشيط';get('oPrice').value=x.price||0;get('oStatus').value=x.status||'جديدة';get('oPayment').value=x.paymentStatus||'غير مدفوعة';get('oTech').value=x.techId||'';get('oNotes').value=x.notes||'';window.scrollTo({top:0,behavior:'smooth'})}
 function clearOrderForm(){['editingOrderId','oName','oPhone','oPrice','oNotes'].forEach(id=>get(id).value='');setAdminServiceSelection('');get('orderFormTitle').textContent='إضافة طلب';get('oStatus').value='جديدة';get('oPayment').value='غير مدفوعة';get('oTech').value=''}
 async function deleteOrder(id){if(!confirm('حذف الطلب '+id+'؟'))return;save(KEYS.ORD,load(KEYS.ORD).filter(x=>x.id!==id));await deleteOrderCloud(id);renderAll();toast('تم حذف الطلب')}
