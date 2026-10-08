@@ -902,20 +902,29 @@ function renderCompanyPortal(){
   get('cpDone').textContent=orders.filter(o=>o.status==='مكتملة').length;
   get('companyPortalOrders').innerHTML=orders.map(o=>`<div class="item-card" style="align-items:stretch;flex-direction:column"><div><b>${safe(o.id)} — ${safe(o.service||'خدمة')}</b><p>العميل: ${safe(o.name||'')} · المدينة: ${safe(o.city||'')} · الحالة: ${safe(o.status||'جديدة')}</p><p>رقم العميل: ${safe(o.phone||'')} · الفني: ${safe(techName(o.techId))}</p></div><div class="actions"><select aria-label="إسناد فني" id="cp-tech-${safe(o.id)}" style="height:40px;border:1px solid #dfe8f4;border-radius:10px"><option value="">اختر فني الشركة</option>${techs.map(t=>`<option value="${safe(t.id)}" ${String(o.techId||'')===String(t.id)?'selected':''}>${safe(t.name)}${t.phone?' · '+safe(t.phone):''}</option>`).join('')}</select><button class="btn small" onclick="companyAssignTech('${safe(o.id)}')">حفظ الإسناد</button><button class="btn small light" onclick="companyUpdateStatus('${safe(o.id)}','قيد التنفيذ')">بدء العمل</button><button class="btn small green" onclick="companyUpdateStatus('${safe(o.id)}','مكتملة')">إنهاء الطلب</button></div></div>`).join('')||'<div class="empty-state">لا توجد طلبات مسندة لهذه الشركة</div>';
 }
-function companyAssignTech(orderId){
-  const cid=companyPortalId();const order=load(KEYS.ORD).find(o=>String(o.id)===String(orderId));
+async function companyAssignTech(orderId){
+  const cid=companyPortalId();
+  const order=load(KEYS.ORD).find(o=>String(o.id)===String(orderId));
   const tid=get('cp-tech-'+orderId)?.value||'';
   const tech=load(KEYS.TECH).find(t=>String(t.id)===String(tid));
   if(!cid||!order||String(order.companyId||'')!==cid||!tech||String(tech.companyId||'')!==cid){toast('اختار فني تابع لنفس الشركة');return;}
-  if(String(order.techId||'')===tid){toast('الطلب مسند لهذا الفني بالفعل');return;}
-  const arr=load(KEYS.ORD).map(o=>String(o.id)===String(orderId)?{...o,techId:tid,status:o.status==='جديدة'?'تم الإسناد':o.status}:o);
-  save(KEYS.ORD,arr);renderAll();toast('تم حفظ إسناد الفني، تحقق من وصول واتساب');
+  if(!sb||!cloudEnabled){toast('يجب الاتصال بقاعدة البيانات لإسناد الفني');return;}
+  try{
+    const {error}=await sb.rpc('company_assign_technician',{p_order_id:String(orderId),p_technician_id:String(tid)});
+    if(error)throw error;
+    await refreshFromCloud(false);
+    toast('تم حفظ الإسناد في قاعدة البيانات');
+  }catch(e){console.error('company assignment',e);toast('فشل الإسناد: '+(e.message||e));}
 }
-function companyUpdateStatus(orderId,status){
-  const cid=companyPortalId();const order=load(KEYS.ORD).find(o=>String(o.id)===String(orderId));
-  if(!cid||!order||String(order.companyId||'')!==cid){toast('الطلب غير تابع لهذه الشركة');return;}
-  if(!order.techId&&status==='قيد التنفيذ'){toast('اسند فني أولًا');return;}
-  save(KEYS.ORD,load(KEYS.ORD).map(o=>String(o.id)===String(orderId)?{...o,status}:o));renderAll();toast('تم تحديث حالة الطلب');
+async function companyUpdateStatus(orderId,status){
+  if(!['قيد التنفيذ','مكتملة'].includes(status)){toast('حالة غير مسموحة');return;}
+  if(!sb||!cloudEnabled){toast('يجب الاتصال بقاعدة البيانات');return;}
+  try{
+    const {error}=await sb.rpc('company_update_order_status',{p_order_id:String(orderId),p_status:status});
+    if(error)throw error;
+    await refreshFromCloud(false);
+    toast('تم تحديث حالة الطلب');
+  }catch(e){console.error('company status',e);toast('فشل التحديث: '+(e.message||e));}
 }
 function showPage(id){if(!canOpenPage(id)){toast('غير مسموح لهذا الحساب بفتح هذه الصفحة');id=allowedPagesForRole(currentUserRole)[0]||'techPortal';}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const page=get(id);if(page)page.classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id==='techPortal')renderTechPortal();if(id==='companyPortal')renderCompanyPortal();if(id==='clientTracking')renderTracking();window.scrollTo({top:0,behavior:'smooth'})}
 function renderAll(){initAdminServiceCards();fillTechSelects();renderNumbers();renderOrders();renderTech();renderInvoices();renderAlerts();renderAssign();renderClients();renderTechPortal();renderCompanyPortal();if(!isTechnicianRole())renderUsers();renderChart();applyRolePermissions(currentUserRole,currentTechnicianId)}
