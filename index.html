@@ -664,18 +664,31 @@ function displayServices(x){
 
 // WhatsApp notifications: invokes the server-side Edge Function; no provider secrets in the browser.
 async function sendOrderWhatsAppNotification(order, eventType='created') {
-  if (!sb || !cloudEnabled || !order?.phone) return;
+  if (!sb || !cloudEnabled) { toast('واتساب: Supabase غير متصل'); return; }
+  if (!order?.phone) { toast('واتساب: رقم جوال العميل غير موجود'); return; }
   try {
-    const {data:{session}}=await sb.auth.getSession();
-    if (!session) return;
-    const payload={phone:order.phone, message:eventType==='created'
+    const {data:{session},error:sessionError}=await sb.auth.getSession();
+    if (sessionError || !session) { toast('واتساب: سجّل الدخول أولاً'); return; }
+    const message=eventType==='created'
       ? `مرحباً ${order.name||'بك'}، تم تسجيل طلبك لدى الأسطول الفني. رقم الطلب: ${order.id}. الخدمة: ${order.service||''}. سنوافيك بالتحديثات.`
-      : `تحديث طلب الأسطول الفني رقم ${order.id}: الحالة ${order.status||'تم التحديث'}.`, order_id:order.id, event_type:eventType};
-    const {data,error}=await sb.functions.invoke('send-whatsapp',{body:payload});
-    if(error) throw error;
-    if(data?.success===true && data?.sending_enabled!==false) toast('تم قبول طلب إرسال إشعار واتساب');
-    else console.warn('WhatsApp provider not configured for sending',data);
-  }catch(e){console.warn('WhatsApp notification failed',e);toast('الطلب محفوظ، لكن إشعار واتساب لم يُرسل');}
+      : `تحديث طلب الأسطول الفني رقم ${order.id}: الحالة ${order.status||'تم التحديث'}.`;
+    const {data,error}=await sb.functions.invoke('send-whatsapp',{
+      body:{phone:order.phone,message,order_id:order.id,event_type:eventType}
+    });
+    if(error){
+      let detail=error.message||'فشل استدعاء وظيفة الإرسال';
+      try { const r=await error.context?.json?.(); if(r?.error) detail=r.error; } catch(_){}
+      throw new Error(detail);
+    }
+    if(data?.ok===true || data?.success===true){
+      toast('تم قبول إرسال رسالة واتساب');
+    } else {
+      throw new Error(data?.error||data?.message||'خدمة واتساب لم تؤكد الإرسال');
+    }
+  }catch(e){
+    console.error('WhatsApp notification failed:',e);
+    toast('واتساب: '+(e.message||'فشل الإرسال'));
+  }
 }
 function saveOrderForm(){let arr=load(KEYS.ORD),edit=get('editingOrderId').value;const selectedServices=getSelectedAdminServices();const serviceText=selectedServices.join('، ');if(!selectedServices.length){toast('اختار خدمة واحدة على الأقل');return}const order={id:edit||orderNumber(),name:get('oName').value.trim()||'عميل جديد',phone:get('oPhone').value.trim(),service:serviceText,services:selectedServices,city:get('oCity').value,price:+get('oPrice').value||0,status:get('oStatus').value,date:today(),notes:get('oNotes').value.trim(),paymentStatus:get('oPayment').value,techId:get('oTech').value||null}; if(edit)arr=arr.map(x=>x.id===edit?{...x,...order}:x); else arr.unshift(order);save(KEYS.ORD,arr);const known=getKnownOrders();known.add(order.id);setKnownOrders(known);clearOrderForm();renderAll();toast(edit?'تم تعديل الطلب':'تم حفظ الطلب');if(!edit)sendOrderWhatsAppNotification(order,'created')}
 function editOrder(id){markOrderSeen(id);const x=roleFilteredOrders(load(KEYS.ORD)).find(o=>o.id===id);if(!x)return;showPage('orders');get('editingOrderId').value=x.id;get('orderFormTitle').textContent='تعديل طلب '+x.id;get('oName').value=x.name||'';get('oPhone').value=x.phone||'';setAdminServiceSelection((x.services&&x.services.length)?x.services:(x.service||'صيانة مكيفات'));get('oCity').value=x.city||'خميس مشيط';get('oPrice').value=x.price||0;get('oStatus').value=x.status||'جديدة';get('oPayment').value=x.paymentStatus||'غير مدفوعة';get('oTech').value=x.techId||'';get('oNotes').value=x.notes||'';window.scrollTo({top:0,behavior:'smooth'})}
